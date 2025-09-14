@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>PhotoBook AR</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
   <style>
@@ -13,12 +14,22 @@
       height: 100%;
       background: black;
     }
+
     #ar-container {
       width: 100%;
       height: 100%;
     }
-    video {
-      display: none;
+
+    /* показать фид камеры MindAR */
+    video.mindar-camera-feed {
+      display: block !important;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: -1;
     }
   </style>
 </head>
@@ -31,16 +42,16 @@
       embedded
     >
       <a-assets>
-        <!-- Твоё видео -->
+        <!-- твоё видео -->
         <video id="ar-video" src="./BoudoirPhotoBox.mp4" autoplay loop playsinline webkit-playsinline muted></video>
       </a-assets>
 
-      <!-- Камера -->
+      <!-- камера -->
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-      <!-- Привязка видео к маркеру -->
+      <!-- привязка видео к маркеру -->
       <a-entity mindar-image-target="targetIndex: 0">
-        <!-- Пропорции под вертикальное фото/видео 9:16 -->
+        <!-- Пропорции 9:16 -->
         <a-plane 
           src="#ar-video" 
           position="0 0 0" 
