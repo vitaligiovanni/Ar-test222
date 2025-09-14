@@ -36,11 +36,10 @@
     <div id="loading">Загрузка AR... Разрешите доступ к камере 📷</div>
 
     <a-scene
-      mindar-image="imageTargetSrc: ./targets.mind;"
+      mindar-image="imageTargetSrc: ./targets(1).mind;"
       color-space="sRGB"
       renderer="colorManagement: true, physicallyCorrectLights, alpha: true"
       vr-mode-ui="enabled: false"
-      device-orientation-permission-ui="enabled: false"
       embedded
       loading-screen="enabled: false"
     >
@@ -73,11 +72,12 @@
       window.addEventListener("DOMContentLoaded", () => {
         const scene = document.querySelector("a-scene");
 
+        // Камера готова
         scene.addEventListener("arReady", () => {
           loading.style.display = "none";
         });
 
-        // Когда найден маркер → запускаем видео + плавное появление
+        // Маркер найден → плавный показ видео
         scene.addEventListener("targetFound", () => {
           video.play();
           let opacity = 0;
@@ -88,7 +88,7 @@
           }, 50);
         });
 
-        // Когда потерян маркер → ставим паузу и скрываем
+        // Маркер потерян → ставим паузу и скрываем
         scene.addEventListener("targetLost", () => {
           video.pause();
           plane.setAttribute("opacity", 0);
