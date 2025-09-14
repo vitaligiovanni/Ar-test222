@@ -20,7 +20,7 @@
       height: 100%;
     }
 
-    /* показать фид камеры MindAR */
+    /* показываем камеру MindAR */
     video.mindar-camera-feed {
       display: block !important;
       position: fixed;
@@ -42,16 +42,13 @@
       embedded
     >
       <a-assets>
-        <!-- твоё видео -->
-        <video id="ar-video" src="./BoudoirPhotoBox.mp4" autoplay loop playsinline webkit-playsinline muted></video>
+        <video id="ar-video" src="./BoudoirPhotoBox.mp4"
+               loop playsinline webkit-playsinline muted></video>
       </a-assets>
 
-      <!-- камера -->
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-      <!-- привязка видео к маркеру -->
       <a-entity mindar-image-target="targetIndex: 0">
-        <!-- Пропорции 9:16 -->
         <a-plane 
           src="#ar-video" 
           position="0 0 0" 
@@ -64,5 +61,15 @@
       </a-entity>
     </a-scene>
   </div>
+
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      const arVideo = document.getElementById('ar-video');
+      document.body.addEventListener('click', () => {
+        arVideo.muted = false;
+        arVideo.play().catch(err => console.log(err));
+      }, {once: true});
+    });
+  </script>
 </body>
 </html>
