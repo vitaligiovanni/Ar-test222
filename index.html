@@ -49,8 +49,7 @@
       <a-assets>
         <video id="videoAsset" src="./BoudoirPhotoBox.mp4"
                preload="auto" loop playsinline
-               webkit-playsinline muted
-               crossorigin="anonymous"></video>
+               webkit-playsinline crossorigin="anonymous" muted></video>
       </a-assets>
 
       <a-camera position="0 0 0" look-controls="false"></a-camera>
@@ -72,59 +71,74 @@
         document.getElementById("debug").innerText += "\n» " + msg;
       };
 
-      // Теперь videoAsset обращается к единственному элементу в a-assets
       const videoAsset = document.getElementById("videoAsset");
       const videoPlane = document.getElementById("videoPlane");
       const startButton = document.getElementById("startButton");
       const sceneEl = document.querySelector("a-scene");
 
-      async function fadeInVideo() {
-        try {
-          // MindAR требует, чтобы видео было без звука для autoplay
+      // Добавим новый флаг для отслеживания состояния
+      let videoPlaying = false;
+
+      function playVideo() {
+        if (!videoPlaying) {
+          // Включаем звук, если это разрешено, и запускаем видео
           videoAsset.muted = false;
-          await videoAsset.play().catch(e => dbg("play() rejected: " + e));
+          videoAsset.play().then(() => {
+            dbg("▶️ Видео воспроизводится.");
+            videoPlaying = true;
+          }).catch(e => {
+            dbg("Ошибка воспроизведения видео: " + e);
+          });
+
+          // Плавное появление видео
           let op = 0;
           const step = 0.05;
           const int = setInterval(() => {
             op += step;
-            if (op >= 1) { op = 1; clearInterval(int); }
-            videoPlane.setAttribute("material", 
-              `opacity: ${op}; transparent: true; shader: flat; side: double;`);
+            if (op >= 1) {
+              op = 1;
+              clearInterval(int);
+            }
+            videoPlane.setAttribute("material", `opacity: ${op}; transparent: true; shader: flat; side: double;`);
           }, 50);
-        } catch(e) {
-          dbg("Ошибка при fadeInVideo: " + e);
         }
       }
 
-      function fadeOutVideo() {
-        let op = 1;
-        const step = 0.05;
-        const int = setInterval(() => {
-          op -= step;
-          if (op <= 0) { op = 0; clearInterval(int); videoAsset.pause(); }
-          videoPlane.setAttribute("material", 
-            `opacity: ${op}; transparent: true; shader: flat; side: double;`);
-        }, 50);
+      function stopVideo() {
+        if (videoPlaying) {
+          // Плавное исчезновение видео
+          let op = 1;
+          const step = 0.05;
+          const int = setInterval(() => {
+            op -= step;
+            if (op <= 0) {
+              op = 0;
+              clearInterval(int);
+              videoAsset.pause(); // Останавливаем видео, когда оно исчезло
+              videoAsset.currentTime = 0; // Сбрасываем видео на начало для следующего показа
+              videoPlaying = false;
+            }
+            videoPlane.setAttribute("material", `opacity: ${op}; transparent: true; shader: flat; side: double;`);
+          }, 50);
+        }
       }
 
-      startButton.addEventListener("click", async () => {
+      startButton.addEventListener("click", () => {
         startButton.style.display = "none";
-        try {
-          await sceneEl.components["mindar-image-system"].start();
-          dbg("MindAR: стартован вручную");
-        } catch(e) {
-          dbg("Ошибка запуска MindAR: " + e);
-        }
+        dbg("Пользователь нажал 'Старт'");
+        // MindAR должен автоматически запуститься. Нам не нужно вызывать `start()` вручную.
       });
 
       sceneEl.addEventListener("arReady", () => dbg("✅ AR готов"));
+      
       sceneEl.addEventListener("targetFound", () => {
-        dbg("🎯 targetFound");
-        fadeInVideo();
+        dbg("🎯 Маркер обнаружен");
+        playVideo();
       });
+
       sceneEl.addEventListener("targetLost", () => {
-        dbg("⭕ targetLost");
-        fadeOutVideo();
+        dbg("⭕ Маркер потерян");
+        stopVideo();
       });
     </script>
   </body>
