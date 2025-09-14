@@ -177,6 +177,25 @@
             background: rgba(0, 255, 0, 0.8);
         }
 
+        /* Превью оригинального изображения */
+        #originalPreview {
+            position: fixed;
+            bottom: 80px;
+            right: 10px;
+            width: 120px;
+            height: auto;
+            border: 2px solid #00ff00;
+            border-radius: 8px;
+            z-index: 1001;
+            opacity: 0.8;
+            transition: all 0.3s ease;
+        }
+
+        #originalPreview:hover {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
         /* Мобильная оптимизация */
         @media (max-width: 768px) {
             #instructions {
@@ -187,6 +206,12 @@
             #videoOverlay {
                 width: 95%;
                 padding: 10px;
+            }
+
+            #originalPreview {
+                width: 80px;
+                bottom: 70px;
+                right: 5px;
             }
         }
     </style>
@@ -204,7 +229,7 @@
 
     <!-- Инструкции -->
     <div id="instructions">
-        📷 Наведите камеру на ФОТОГРАФИЮ девочки (не на файл .mind!)
+        📷 Наведите камеру на ФОТОГРАФИЮ девочки (см. пример справа внизу)
         <br>Держите камеру стабильно на расстоянии 20-30 см
     </div>
 
@@ -212,6 +237,9 @@
     <div id="markerStatus">
         🔍 Ищу фотографию девочки...
     </div>
+
+    <!-- Превью оригинального изображения -->
+    <img id="originalPreview" src="./half_body_crop.jpg" alt="Эта фотография нужна для сканирования" title="Наведите камеру на такую фотографию">
 
     <!-- Fallback кнопка -->
     <button class="fallback-button" id="fallbackBtn">
@@ -247,12 +275,15 @@
                    muted
                    loop>
             </video>
+            <!-- Добавляем оригинальное изображение в assets -->
+            <img id="original-image" src="./half_body_crop.jpg" crossorigin="anonymous">
         </a-assets>
 
         <!-- AR Маркер (NFT - Natural Feature Tracking) -->
+        <!-- Убираем расширение из url, так как AR.js ожидает базовое имя -->
         <a-nft
             type="nft"
-            url="./half_body_crop"
+            url="./targets (1)"
             smooth="true"
             smoothCount="10"
             smoothTolerance=".01"
@@ -317,6 +348,7 @@
                 this.closeBtn = document.getElementById('closeBtn');
                 this.fallbackBtn = document.getElementById('fallbackBtn');
                 this.markerStatus = document.getElementById('markerStatus');
+                this.originalPreview = document.getElementById('originalPreview');
                 
                 this.markerFound = false;
                 this.isFullscreenVideo = false;
@@ -331,6 +363,17 @@
                     this.nftMarker = document.getElementById('nft-marker');
                     this.videoPlane = document.getElementById('video-plane');
                     this.setupEventListeners();
+                });
+
+                // Проверяем загрузку оригинального изображения
+                this.originalPreview.addEventListener('load', () => {
+                    console.log('✅ Оригинальное изображение загружено');
+                });
+
+                this.originalPreview.addEventListener('error', () => {
+                    console.error('❌ Ошибка загрузки оригинального изображения');
+                    this.originalPreview.style.display = 'none';
+                    alert('⚠️ Файл half_body_crop.jpg не найден!\n\nУбедитесь, что файл находится в той же папке.');
                 });
 
                 // Удаляем загрузчик через некоторое время
@@ -399,6 +442,11 @@
 
                 // Дополнительная проверка маркера
                 this.startMarkerCheck();
+
+                // Клик по превью для подсказки
+                this.originalPreview.addEventListener('click', () => {
+                    alert('💡 Подсказка:\n\nНаведите камеру телефона на эту фотографию девочки.\n\nУдерживайте камеру стабильно на расстоянии 20-30 см от фотографии.');
+                });
             }
 
             onMarkerFound() {
@@ -503,6 +551,7 @@
                             '💡 Совет: держите камеру стабильно',
                             '📏 Расстояние: 20-30 см от фото',
                             '💡 Убедитесь, что фото хорошо освещено',
+                            '📱 Наведите на фото как показано справа',
                             '🔍 Ищу фотографию девочки...'
                         ];
                         
@@ -541,6 +590,26 @@
             setTimeout(() => {
                 location.reload();
             }, 1000);
+        });
+
+        // Дополнительная диагностика
+        window.addEventListener('load', () => {
+            console.log('📋 Диагностика файлов:');
+            console.log('- half_body_crop.jpg:', document.getElementById('originalPreview').complete);
+            console.log('- BoudoirPhotoBox.mp4:', document.getElementById('video-asset').readyState);
+            
+            // Проверяем файлы маркера
+            fetch('./targets (1).mind')
+                .then(() => console.log('✅ targets (1).mind найден'))
+                .catch(() => console.error('❌ targets (1).mind не найден'));
+                
+            fetch('./targets (1).fset')
+                .then(() => console.log('✅ targets (1).fset найден'))
+                .catch(() => console.error('❌ targets (1).fset не найден'));
+                
+            fetch('./targets (1).iset')
+                .then(() => console.log('✅ targets (1).iset найден'))
+                .catch(() => console.error('❌ targets (1).iset не найден'));
         });
     </script>
 </body>
