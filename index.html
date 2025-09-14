@@ -17,7 +17,6 @@
       font-family: Arial, Helvetica, sans-serif;
       color: #fff;
     }
-
     #ui {
       position: fixed;
       left: 10px;
@@ -29,7 +28,6 @@
       align-items: center;
       flex-wrap: wrap;
     }
-
     button {
       padding: 10px 14px;
       border-radius: 8px;
@@ -39,11 +37,7 @@
       font-weight: 700;
       cursor: pointer;
     }
-
-    button.warn {
-      background: #ff7a00;
-    }
-
+    button.warn { background: #ff7a00; }
     #debug {
       position: fixed;
       left: 10px;
@@ -57,7 +51,6 @@
       font-size: 13px;
       border: 1px solid rgba(255, 255, 255, 0.06);
     }
-
     #camPreview {
       position: fixed;
       inset: 0;
@@ -67,7 +60,6 @@
       z-index: 0;
       display: none;
     }
-
     #loadingOverlay {
       position: fixed;
       inset: 0;
@@ -80,11 +72,6 @@
       padding: 20px;
       text-align: center;
     }
-
-    #unmuteBtn {
-      background: #1a73e8;
-    }
-
     .a-enter-vr, .a-enter-ar {
       display: none !important;
     }
@@ -94,12 +81,10 @@
   <div id="ui">
     <button id="startBtn">▶ Start AR (нажми и разреши камеру)</button>
     <button id="testCamBtn" class="warn">Тест камеры</button>
-    <button id="unmuteBtn" style="display: none;">🔊 Включить звук</button>
-    <div id="status" style="margin-left: 8px; font-weight: 600">Status: ожидание</div>
+    <div id="status" style="margin-left:8px; font-weight:600">Status: ожидание</div>
   </div>
 
   <video id="camPreview" autoplay playsinline muted></video>
-
   <div id="loadingOverlay" style="display:none">Загрузка AR... дождитесь запроса камеры и разрешите доступ</div>
 
   <a-scene id="arScene"
@@ -113,10 +98,10 @@
 
     <a-camera position="0 0 0"></a-camera>
 
-    <!-- ВНИМАНИЕ: здесь внесено изменение позиции по Z: 0.01 -->
+    <!-- 👇 Изменено: position="0 0 0.01" и rotation="-90 0 0" -->
     <a-entity id="targetEntity" mindar-image-target="targetIndex: 0">
       <a-plane id="videoPlane" src="#videoAsset" width="1.6" height="0.9"
-               position="0 0 0.01" rotation="0 0 0"
+               position="0 0 0.01" rotation="-90 0 0"
                material="shader: flat; transparent: true; opacity: 0"></a-plane>
     </a-entity>
   </a-scene>
@@ -140,7 +125,6 @@
 
     const startBtn = document.getElementById('startBtn');
     const testCamBtn = document.getElementById('testCamBtn');
-    const unmuteBtn = document.getElementById('unmuteBtn');
     const camPreview = document.getElementById('camPreview');
     const loadingOverlay = document.getElementById('loadingOverlay');
     const videoAsset = document.getElementById('videoAsset');
@@ -165,80 +149,51 @@
         const t2 = await checkFile(ALT_TARGET_FILENAME);
         dbg(`targets(1).mind доступен: ${t2}`);
         if (t2) targetToUse = ALT_TARGET_FILENAME;
-        else {
-          dbg('Не найден файл targets.mind.');
-        }
+        else dbg('❌ Не найден targets.mind');
       }
       const v = await checkFile(VIDEO_FILENAME);
       dbg(`Видео ${VIDEO_FILENAME} доступно: ${v}`);
-      return { targetToUse, ok: ((t1 || (await checkFile(ALT_TARGET_FILENAME))) && v) };
+      return { targetToUse, ok: ((t1 || await checkFile(ALT_TARGET_FILENAME)) && v) };
     }
 
     async function startCameraPreview() {
       try {
-        dbg('Запрос доступа к камере...');
+        dbg('Запрос камеры...');
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
         camPreview.srcObject = stream;
         camPreview.style.display = 'block';
-        dbg('Камера: предпросмотр включен');
+        dbg('Камера активна');
         return stream;
       } catch (e) {
-        dbg('Ошибка доступа к камере: ' + (e.message || e));
+        dbg('Ошибка камеры: ' + e.message);
         throw e;
       }
     }
 
     async function startMindAR(targetFile) {
-      try {
-        setStatus('Инициализация AR...');
-        loadingOverlay.style.display = 'flex';
+      setStatus('Инициализация AR...');
+      loadingOverlay.style.display = 'flex';
+      arScene.setAttribute('mindar-image', `imageTargetSrc: ${targetFile};`);
+      await new Promise(r => setTimeout(r, 500));
+      const mindarSystem = arScene?.systems?.['mindar-image-system'];
+      await mindarSystem?.start();
+      loadingOverlay.style.display = 'none';
+      setStatus('AR запущен — ждём маркер');
 
-        arScene.setAttribute('mindar-image', `imageTargetSrc: ${targetFile};`);
-        dbg('Установлен mindar-image: ' + targetFile);
-        await new Promise(r => setTimeout(r, 500));
-
-        const mindarSystem = arScene?.systems?.['mindar-image-system'];
-        const mindarComponent = arScene?.components?.['mindar-image'];
-
-        if (mindarSystem && typeof mindarSystem.start === 'function') {
-          dbg('mindar system.start()');
-          await mindarSystem.start();
-        } else if (mindarComponent && typeof mindarComponent.start === 'function') {
-          dbg('mindar component.start()');
-          await mindarComponent.start();
-        }
-
-        setStatus('AR запущен — ждём маркер');
-        loadingOverlay.style.display = 'none';
-
-        arScene.addEventListener('targetFound', () => {
-          dbg('Маркер найден!');
-          fadeInVideo();
-        });
-        arScene.addEventListener('targetLost', () => {
-          dbg('Маркер потерян');
-          pauseAndHide();
-        });
-
-      } catch (err) {
-        dbg('Ошибка запуска MindAR: ' + (err?.message || err));
-        loadingOverlay.style.display = 'none';
-      }
+      arScene.addEventListener('targetFound', () => {
+        dbg('📍 Маркер найден');
+        fadeInVideo();
+      });
+      arScene.addEventListener('targetLost', () => {
+        dbg('❌ Маркер потерян');
+        pauseAndHide();
+      });
     }
 
     async function fadeInVideo() {
       try {
         videoAsset.muted = false;
-        const playResult = await videoAsset.play().catch(e => {
-          dbg('play() videoAsset отказано: ' + e);
-          unmuteBtn.style.display = 'inline-block';
-        });
-
-        if (playResult !== undefined) {
-          dbg('Видео играет со звуком');
-          unmuteBtn.style.display = 'none';
-        }
-
+        await videoAsset.play().catch(e => dbg('🔇 Видео без звука: ' + e));
         videoPlane.setAttribute('opacity', 0);
         let op = 0;
         const step = 0.05;
@@ -251,37 +206,31 @@
           videoPlane.setAttribute('opacity', op);
         }, 50);
       } catch (e) {
-        dbg('Ошибка fadeInVideo: ' + e);
+        dbg('Ошибка видео: ' + e.message);
       }
     }
 
     function pauseAndHide() {
-      try { videoAsset.pause(); } catch (e) { }
+      try { videoAsset.pause(); } catch (e) {}
       videoPlane.setAttribute('opacity', 0);
     }
 
     startBtn.addEventListener('click', async () => {
       startBtn.disabled = true;
-      setStatus('Проверяем файлы...');
       const prep = await prepare();
-
       if (!prep.ok) {
-        dbg('Файлы не найдены.');
+        dbg('Файлы не найдены. Проверь репозиторий.');
         startBtn.disabled = false;
         return;
       }
-
       try {
         await startCameraPreview();
       } catch (e) {
-        dbg('Ошибка камеры: ' + e);
         startBtn.disabled = false;
         return;
       }
-
       setTimeout(() => {
         startMindAR(prep.targetToUse);
-        setStatus('AR запускается...');
       }, 600);
     });
 
@@ -291,24 +240,13 @@
         await startCameraPreview();
         setStatus('Камера предпросмотр включен');
       } catch (e) {
-        dbg('Ошибка предпросмотра: ' + e);
+        dbg('Ошибка предпросмотра: ' + e.message);
       } finally {
         testCamBtn.disabled = false;
       }
     });
 
-    unmuteBtn.addEventListener('click', async () => {
-      try {
-        videoAsset.muted = false;
-        await videoAsset.play();
-        dbg('Звук включен вручную');
-        unmuteBtn.style.display = 'none';
-      } catch (e) {
-        dbg('Ошибка включения звука: ' + e);
-      }
-    });
-
-    dbg('Готово к запуску. Убедитесь, что файлы BoudoirPhotoBox.mp4 и targets.mind загружены в репозиторий.');
+    dbg('💡 Убедитесь, что все файлы загружены и вы используете HTTPS (GitHub Pages)');
   </script>
 </body>
 </html>
