@@ -10,53 +10,109 @@
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
   <style>
-    html,body { height:100%; margin:0; background:#000; font-family:Arial,Helvetica,sans-serif; color:#fff;}
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: #000;
+      font-family: Arial, Helvetica, sans-serif;
+      color: #fff;
+    }
+
     #ui {
-      position:fixed; left:10px; top:10px; z-index:9999; width:calc(100% - 20px);
-      display:flex; gap:8px; align-items:center;
+      position: fixed;
+      left: 10px;
+      top: 10px;
+      z-index: 9999;
+      width: calc(100% - 20px);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
     }
-    button { padding:10px 14px; border-radius:8px; border:none; background:#00b050; color:#fff; font-weight:700; }
-    button.warn { background:#ff7a00; }
+
+    button {
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: none;
+      background: #00b050;
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button.warn {
+      background: #ff7a00;
+    }
+
     #debug {
-      position:fixed; left:10px; bottom:10px; right:10px; max-height:35vh; overflow:auto;
-      background:rgba(0,0,0,0.6); padding:10px; border-radius:8px; font-size:13px;
-      border:1px solid rgba(255,255,255,0.06);
+      position: fixed;
+      left: 10px;
+      bottom: 10px;
+      right: 10px;
+      max-height: 35vh;
+      overflow: auto;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
     }
-    #camPreview { position:fixed; inset:0; width:100%; height:100%; object-fit:cover; z-index:0; display:none; }
+
+    #camPreview {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 0;
+      display: none;
+    }
+
     #loadingOverlay {
-      position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:5;
-      background:rgba(0,0,0,0.7); font-size:18px; padding:20px; text-align:center;
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 5;
+      background: rgba(0, 0, 0, 0.7);
+      font-size: 18px;
+      padding: 20px;
+      text-align: center;
     }
-    /* hide A-Frame enter button etc */
-    .a-enter-vr, .a-enter-ar { display:none !important; }
+
+    #unmuteBtn {
+      background: #1a73e8;
+    }
+
+    .a-enter-vr, .a-enter-ar {
+      display: none !important;
+    }
   </style>
 </head>
 <body>
   <div id="ui">
     <button id="startBtn">▶ Start AR (нажми и разреши камеру)</button>
     <button id="testCamBtn" class="warn">Тест камеры</button>
-    <div id="status" style="margin-left:8px; font-weight:600">Status: ожидание</div>
+    <button id="unmuteBtn" style="display: none;">🔊 Включить звук</button>
+    <div id="status" style="margin-left: 8px; font-weight: 600">Status: ожидание</div>
   </div>
 
   <video id="camPreview" autoplay playsinline muted></video>
 
   <div id="loadingOverlay" style="display:none">Загрузка AR... дождитесь запроса камеры и разрешите доступ</div>
 
-  <!-- A-Frame scene - mindar will render here -->
   <a-scene id="arScene"
            embedded
            vr-mode-ui="enabled: false"
            loading-screen="enabled: false"
            renderer="colorManagement: true, physicallyCorrectLights, alpha: true">
     <a-assets>
-      <!-- video asset will be used; source file must be present -->
-      <video id="videoAsset" src="./BoudoirPhotoBox.mp4" preload="auto" loop playsinline webkit-playsinline crossorigin="anonymous" muted></video>
+      <video id="videoAsset" src="./BoudoirPhotoBox.mp4" preload="auto" loop playsinline webkit-playsinline crossorigin="anonymous"></video>
     </a-assets>
 
-    <!-- camera -->
     <a-camera position="0 0 0"></a-camera>
 
-    <!-- plane that will show video over the detected image (targetIndex 0) -->
     <a-entity id="targetEntity" mindar-image-target="targetIndex: 0">
       <a-plane id="videoPlane" src="#videoAsset" width="1.6" height="0.9"
                position="0 0 0" rotation="0 0 0"
@@ -66,202 +122,193 @@
 
   <div id="debug"><b>debug log</b><br></div>
 
-<script>
-/* ---------- Utility logging ---------- */
-const dbg = (msg) => {
-  console.log(msg);
-  const debug = document.getElementById('debug');
-  debug.innerHTML += ('<div style="margin-top:6px">» ' + msg + '</div>');
-  debug.scrollTop = debug.scrollHeight;
-};
-const setStatus = (s) => { document.getElementById('status').textContent = 'Status: ' + s; };
+  <script>
+    const dbg = (msg) => {
+      console.log(msg);
+      const debug = document.getElementById('debug');
+      debug.innerHTML += ('<div style="margin-top:6px">» ' + msg + '</div>');
+      debug.scrollTop = debug.scrollHeight;
+    };
+    const setStatus = (s) => {
+      document.getElementById('status').textContent = 'Status: ' + s;
+    };
 
-/* ---------- Config: names ---------- */
-const TARGET_FILENAME = './targets.mind'; // please rename targets(1).mind -> targets.mind
-const ALT_TARGET_FILENAME = './targets(1).mind'; // fallback if you insist on original name
-const VIDEO_FILENAME = './BoudoirPhotoBox.mp4';
+    const TARGET_FILENAME = './targets.mind';
+    const ALT_TARGET_FILENAME = './targets(1).mind';
+    const VIDEO_FILENAME = './BoudoirPhotoBox.mp4';
 
-/* ---------- Elements ---------- */
-const startBtn = document.getElementById('startBtn');
-const testCamBtn = document.getElementById('testCamBtn');
-const camPreview = document.getElementById('camPreview');
-const loadingOverlay = document.getElementById('loadingOverlay');
-const videoAsset = document.getElementById('videoAsset');
-const arScene = document.getElementById('arScene');
-const videoPlane = document.getElementById('videoPlane');
+    const startBtn = document.getElementById('startBtn');
+    const testCamBtn = document.getElementById('testCamBtn');
+    const unmuteBtn = document.getElementById('unmuteBtn');
+    const camPreview = document.getElementById('camPreview');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const videoAsset = document.getElementById('videoAsset');
+    const arScene = document.getElementById('arScene');
+    const videoPlane = document.getElementById('videoPlane');
 
-/* ---------- Step 0: quick checks for files ---------- */
-async function checkFile(url) {
-  try {
-    const res = await fetch(url, { method: 'HEAD' });
-    return res.ok;
-  } catch(e) {
-    return false;
-  }
-}
-
-async function prepare() {
-  dbg('Проверка наличия файлов...');
-  const t1 = await checkFile(TARGET_FILENAME);
-  dbg(`targets.mind доступен: ${t1}`);
-  let targetToUse = TARGET_FILENAME;
-  if (!t1) {
-    const t2 = await checkFile(ALT_TARGET_FILENAME);
-    dbg(`targets(1).mind доступен: ${t2}`);
-    if (t2) targetToUse = ALT_TARGET_FILENAME;
-    else {
-      dbg('Не найден файл targets.mind. Переименуй targets(1).mind в targets.mind или загрузите файл в репозиторий.');
-    }
-  }
-  const v = await checkFile(VIDEO_FILENAME);
-  dbg(`Видео ${VIDEO_FILENAME} доступно: ${v}`);
-  if (!v) dbg('Проверь, что BoudoirPhotoBox.mp4 присутствует в репозитории рядом с index.html.');
-
-  return { targetToUse, ok: ( (t1 || (await checkFile(ALT_TARGET_FILENAME))) && v ) };
-}
-
-/* ---------- Start camera preview (user gesture required) ---------- */
-async function startCameraPreview() {
-  try {
-    dbg('Запрос доступа к камере (предпросмотр)...');
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio:false });
-    camPreview.srcObject = stream;
-    camPreview.style.display = 'block';
-    dbg('Камера: stream получен и отображается предпросмотр');
-    return stream;
-  } catch (e) {
-    dbg('Ошибка доступа к камере: ' + (e.message || e));
-    throw e;
-  }
-}
-
-/* ---------- Start MindAR properly ---------- */
-async function startMindAR(targetFile) {
-  try {
-    setStatus('Инициализация AR...');
-    loadingOverlay.style.display = 'flex';
-
-    // Set the imageTargetSrc attribute on the scene BEFORE MindAR system initializes.
-    // If scene already had mindar components, we try to set attribute and then start system.
-    arScene.setAttribute('mindar-image', `imageTargetSrc: ${targetFile};`);
-
-    dbg('Установлен параметр mindar-image: ' + targetFile);
-
-    // Wait a tick for A-Frame to process attributes
-    await new Promise(r => setTimeout(r, 500));
-
-    // Try to start MindAR system using available APIs (best-effort)
-    const mindarSystem = arScene && arScene.systems && arScene.systems['mindar-image-system'];
-    const mindarComponent = arScene && arScene.components && arScene.components['mindar-image'];
-
-    if (mindarSystem && typeof mindarSystem.start === 'function') {
-      dbg('Попытка запустить mindar через system.start()');
-      await mindarSystem.start();
-    } else if (mindarComponent && typeof mindarComponent.start === 'function') {
-      dbg('Попытка запустить mindar через component.start()');
-      await mindarComponent.start();
-    } else {
-      dbg('Не найдено прямого API start(). Попытка вызвать scene.requestEnterAR (алиас) или оставить A-Frame инициализацию.');
-      if (typeof arScene.enterVR === 'function') {
-        try { arScene.enterVR(); dbg('Вызван enterVR() (как попытка инициировать камеру)'); } catch(e) { dbg('enterVR() не сработал: ' + e); }
+    async function checkFile(url) {
+      try {
+        const res = await fetch(url, { method: 'HEAD' });
+        return res.ok;
+      } catch (e) {
+        return false;
       }
     }
 
-    setStatus('AR запущен — ждём распознавания маркера');
-    loadingOverlay.style.display = 'none';
-    dbg('MindAR: стартован (или отправлен запрос на старт). Слушаем события targetFound/targetLost');
+    async function prepare() {
+      dbg('Проверка наличия файлов...');
+      const t1 = await checkFile(TARGET_FILENAME);
+      dbg(`targets.mind доступен: ${t1}`);
+      let targetToUse = TARGET_FILENAME;
+      if (!t1) {
+        const t2 = await checkFile(ALT_TARGET_FILENAME);
+        dbg(`targets(1).mind доступен: ${t2}`);
+        if (t2) targetToUse = ALT_TARGET_FILENAME;
+        else {
+          dbg('Не найден файл targets.mind.');
+        }
+      }
+      const v = await checkFile(VIDEO_FILENAME);
+      dbg(`Видео ${VIDEO_FILENAME} доступно: ${v}`);
+      return { targetToUse, ok: ((t1 || (await checkFile(ALT_TARGET_FILENAME))) && v) };
+    }
 
-    // wire events: A-Frame MindAR emits targetFound/targetLost on the scene
-    arScene.addEventListener('targetFound', () => {
-      dbg('СОБЫТИЕ: targetFound');
-      // play video and fade-in
-      fadeInVideo();
+    async function startCameraPreview() {
+      try {
+        dbg('Запрос доступа к камере...');
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+        camPreview.srcObject = stream;
+        camPreview.style.display = 'block';
+        dbg('Камера: предпросмотр включен');
+        return stream;
+      } catch (e) {
+        dbg('Ошибка доступа к камере: ' + (e.message || e));
+        throw e;
+      }
+    }
+
+    async function startMindAR(targetFile) {
+      try {
+        setStatus('Инициализация AR...');
+        loadingOverlay.style.display = 'flex';
+
+        arScene.setAttribute('mindar-image', `imageTargetSrc: ${targetFile};`);
+        dbg('Установлен mindar-image: ' + targetFile);
+        await new Promise(r => setTimeout(r, 500));
+
+        const mindarSystem = arScene?.systems?.['mindar-image-system'];
+        const mindarComponent = arScene?.components?.['mindar-image'];
+
+        if (mindarSystem && typeof mindarSystem.start === 'function') {
+          dbg('mindar system.start()');
+          await mindarSystem.start();
+        } else if (mindarComponent && typeof mindarComponent.start === 'function') {
+          dbg('mindar component.start()');
+          await mindarComponent.start();
+        }
+
+        setStatus('AR запущен — ждём маркер');
+        loadingOverlay.style.display = 'none';
+
+        arScene.addEventListener('targetFound', () => {
+          dbg('Маркер найден!');
+          fadeInVideo();
+        });
+        arScene.addEventListener('targetLost', () => {
+          dbg('Маркер потерян');
+          pauseAndHide();
+        });
+
+      } catch (err) {
+        dbg('Ошибка запуска MindAR: ' + (err?.message || err));
+        loadingOverlay.style.display = 'none';
+      }
+    }
+
+    async function fadeInVideo() {
+      try {
+        videoAsset.muted = false; // 🔈 включаем звук
+        const playResult = await videoAsset.play().catch(e => {
+          dbg('play() videoAsset отказано: ' + e);
+          // Показать кнопку включения звука
+          unmuteBtn.style.display = 'inline-block';
+        });
+
+        if (playResult !== undefined) {
+          dbg('Видео успешно воспроизводится со звуком');
+          unmuteBtn.style.display = 'none';
+        }
+
+        videoPlane.setAttribute('opacity', 0);
+        let op = 0;
+        const step = 0.05;
+        const int = setInterval(() => {
+          op += step;
+          if (op >= 1) {
+            op = 1;
+            clearInterval(int);
+          }
+          videoPlane.setAttribute('opacity', op);
+        }, 50);
+      } catch (e) {
+        dbg('Ошибка fadeInVideo: ' + e);
+      }
+    }
+
+    function pauseAndHide() {
+      try { videoAsset.pause(); } catch (e) { }
+      videoPlane.setAttribute('opacity', 0);
+    }
+
+    startBtn.addEventListener('click', async () => {
+      startBtn.disabled = true;
+      setStatus('Проверяем файлы...');
+      const prep = await prepare();
+
+      if (!prep.ok) {
+        dbg('Файлы не в порядке.');
+        startBtn.disabled = false;
+        return;
+      }
+
+      try {
+        await startCameraPreview();
+      } catch (e) {
+        dbg('Ошибка камеры: ' + e);
+        startBtn.disabled = false;
+        return;
+      }
+
+      setTimeout(() => {
+        startMindAR(prep.targetToUse);
+        setStatus('AR запускается...');
+      }, 600);
     });
-    arScene.addEventListener('targetLost', () => {
-      dbg('СОБЫТИЕ: targetLost');
-      pauseAndHide();
+
+    testCamBtn.addEventListener('click', async () => {
+      testCamBtn.disabled = true;
+      try {
+        await startCameraPreview();
+        setStatus('Камера предпросмотр включен');
+      } catch (e) {
+        dbg('Ошибка предпросмотра: ' + e);
+      } finally {
+        testCamBtn.disabled = false;
+      }
     });
 
-    // Also listen low-level ready event
-    arScene.addEventListener('arReady', () => {
-      dbg('СОБЫТИЕ: arReady');
+    unmuteBtn.addEventListener('click', async () => {
+      try {
+        videoAsset.muted = false;
+        await videoAsset.play();
+        dbg('Звук включён вручную');
+        unmuteBtn.style.display = 'none';
+      } catch (e) {
+        dbg('Не удалось включить звук: ' + e);
+      }
     });
 
-  } catch (err) {
-    dbg('Ошибка запуска MindAR: ' + (err && err.message ? err.message : err));
-    loadingOverlay.style.display = 'none';
-  }
-}
-
-/* ---------- Visual helpers ---------- */
-async function fadeInVideo() {
-  try {
-    videoAsset.muted = true; // start muted to avoid autoplay blocks
-    await videoAsset.play().catch(e => dbg('play() videoAsset rejected: ' + e));
-    videoPlane.setAttribute('opacity', 0);
-    let op = 0;
-    const step = 0.05;
-    const int = setInterval(() => {
-      op += step;
-      if (op >= 1) { op = 1; clearInterval(int); }
-      videoPlane.setAttribute('opacity', op);
-    }, 50);
-  } catch(e) {
-    dbg('Ошибка при fadeInVideo: ' + e);
-  }
-}
-function pauseAndHide() {
-  try { videoAsset.pause(); } catch(e) {}
-  videoPlane.setAttribute('opacity', 0);
-}
-
-/* ---------- Button handlers ---------- */
-startBtn.addEventListener('click', async () => {
-  startBtn.disabled = true;
-  setStatus('Проверяем файлы...');
-  const prep = await prepare();
-
-  if (!prep.ok) {
-    dbg('Файлы не в порядке. Исправьте и обновите репозиторий (см. логи выше).');
-    startBtn.disabled = false;
-    return;
-  }
-
-  // Ensure camera permission is requested by a user gesture:
-  try {
-    await startCameraPreview();
-  } catch(e) {
-    dbg('Невозможно получить доступ к камере: ' + e);
-    startBtn.disabled = false;
-    return;
-  }
-
-  // Small wait so preview appears before starting AR
-  setTimeout(() => {
-    startMindAR(prep.targetToUse);
-    setStatus('AR: инициализируется');
-  }, 600);
-});
-
-testCamBtn.addEventListener('click', async () => {
-  testCamBtn.disabled = true;
-  try {
-    await startCameraPreview();
-    setStatus('Камера: предпросмотр включён');
-  } catch(e) {
-    dbg('Ошибка предпросмотра камеры: ' + e);
-  } finally {
-    testCamBtn.disabled = false;
-  }
-});
-
-/* ---------- Additional tips for user (printed to debug on load) ---------- */
-dbg('Инструкция: 1) Переименуйте targets(1).mind → targets.mind в репозитории. 2) Убедитесь, что BoudoirPhotoBox.mp4 рядом с index.html. 3) Сервис должен быть по HTTPS (GitHub Pages / Cloudflare Tunnel). 4) Нажмите Start AR (и разрешите камере).');
-dbg('Если AR всё ещё не видит маркер: проверьте лог в этом окне (или откройте devtools через chrome://inspect для Android).');
-
-/* ---------- Remote debugging instructions (short) ---------- */
-dbg('Чтобы смотреть консоль телефона: подключите Android по USB и в Chrome ПК откройте chrome://inspect (или на Mac — Safari -> Develop для iOS).');
-
-</script>
+    dbg('Инструкция: убедитесь, что BoudoirPhotoBox.mp4 и targets.mind загружены в репозиторий. Сервис должен работать по HTTPS.');
+  </script>
 </body>
 </html>
