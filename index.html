@@ -1,252 +1,131 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-  <title>AR Debug / Boudoir</title>
-
-  <!-- A-Frame + MindAR -->
-  <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
+  <meta charset="UTF-8" />
+  <title>AR Photobook Demo</title>
+  <script src="https://cdn.jsdelivr.net/npm/aframe@1.5.0/dist/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-
   <style>
-    html, body {
-      height: 100%;
+    body, html {
       margin: 0;
-      background: #000;
-      font-family: Arial, Helvetica, sans-serif;
-      color: #fff;
+      padding: 0;
+      overflow: hidden;
+      font-family: sans-serif;
     }
-    #ui {
-      position: fixed;
-      left: 10px;
+    #status {
+      position: absolute;
       top: 10px;
-      z-index: 9999;
-      width: calc(100% - 20px);
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-    button {
-      padding: 10px 14px;
-      border-radius: 8px;
-      border: none;
-      background: #00b050;
-      color: #fff;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    button.warn { background: #ff7a00; }
-    #debug {
-      position: fixed;
       left: 10px;
-      bottom: 10px;
-      right: 10px;
-      max-height: 35vh;
-      overflow: auto;
-      background: rgba(0, 0, 0, 0.6);
-      padding: 10px;
-      border-radius: 8px;
-      font-size: 13px;
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(0,0,0,0.6);
+      color: #fff;
+      padding: 6px 10px;
+      font-size: 14px;
+      border-radius: 6px;
+      z-index: 1000;
     }
-    #camPreview {
-      position: fixed;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      z-index: 0;
-      display: none;
-    }
-    #loadingOverlay {
-      position: fixed;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 5;
-      background: rgba(0, 0, 0, 0.7);
-      font-size: 18px;
-      padding: 20px;
-      text-align: center;
-    }
-    .a-enter-vr, .a-enter-ar {
-      display: none !important;
+    #startButton {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 12px 20px;
+      font-size: 16px;
+      background: #2196f3;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      z-index: 1001;
     }
   </style>
 </head>
 <body>
-  <div id="ui">
-    <button id="startBtn">▶ Start AR (нажми и разреши камеру)</button>
-    <button id="testCamBtn" class="warn">Тест камеры</button>
-    <div id="status" style="margin-left:8px; font-weight:600">Status: ожидание</div>
-  </div>
+  <div id="status">▶ Нажмите "Start AR" и разрешите доступ к камере</div>
+  <button id="startButton">Start AR</button>
 
-  <video id="camPreview" autoplay playsinline muted></video>
-  <div id="loadingOverlay" style="display:none">Загрузка AR... дождитесь запроса камеры и разрешите доступ</div>
-
-  <a-scene id="arScene"
-           embedded
-           vr-mode-ui="enabled: false"
-           loading-screen="enabled: false"
-           renderer="colorManagement: true, physicallyCorrectLights, alpha: true">
+  <a-scene
+    mindar-image="imageTargetSrc: ./targets.mind; autoStart: false;"
+    color-space="sRGB"
+    renderer="colorManagement: true, physicallyCorrectLights"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false"
+    embedded
+  >
     <a-assets>
-      <video id="videoAsset" src="./BoudoirPhotoBox.mp4" preload="auto" loop playsinline webkit-playsinline crossorigin="anonymous"></video>
+      <!-- Твоё видео -->
+      <video id="videoAsset" src="./BoudoirPhotoBox.mp4"
+             preload="auto" loop playsinline
+             webkit-playsinline crossorigin="anonymous"></video>
     </a-assets>
 
-    <a-camera position="0 0 0"></a-camera>
+    <!-- Камера -->
+    <a-camera position="0 0 0" look-controls="false"></a-camera>
 
-    <!-- 👇 Изменено: position="0 0 0.01" и rotation="-90 0 0" -->
-    <a-entity id="targetEntity" mindar-image-target="targetIndex: 0">
-      <a-plane id="videoPlane" src="#videoAsset" width="1.6" height="0.9"
-               position="0 0 0.01" rotation="-90 0 0"
-               material="shader: flat; transparent: true; opacity: 0"></a-plane>
+    <!-- Маркер + плоскость для видео -->
+    <a-entity mindar-image-target="targetIndex: 0">
+      <a-plane id="videoPlane" src="#videoAsset"
+               position="0 0 0"
+               rotation="0 0 0"
+               width="1.6" height="0.9"
+               material="shader: flat; transparent: true; opacity: 0; side: double">
+      </a-plane>
     </a-entity>
   </a-scene>
 
-  <div id="debug"><b>debug log</b><br></div>
-
   <script>
-    const dbg = (msg) => {
-      console.log(msg);
-      const debug = document.getElementById('debug');
-      debug.innerHTML += ('<div style="margin-top:6px">» ' + msg + '</div>');
-      debug.scrollTop = debug.scrollHeight;
-    };
-    const setStatus = (s) => {
-      document.getElementById('status').textContent = 'Status: ' + s;
-    };
-
-    const TARGET_FILENAME = './targets.mind';
-    const ALT_TARGET_FILENAME = './targets(1).mind';
-    const VIDEO_FILENAME = './BoudoirPhotoBox.mp4';
-
-    const startBtn = document.getElementById('startBtn');
-    const testCamBtn = document.getElementById('testCamBtn');
-    const camPreview = document.getElementById('camPreview');
-    const loadingOverlay = document.getElementById('loadingOverlay');
+    const statusBox = document.getElementById('status');
+    const startBtn = document.getElementById('startButton');
     const videoAsset = document.getElementById('videoAsset');
-    const arScene = document.getElementById('arScene');
     const videoPlane = document.getElementById('videoPlane');
+    const scene = document.querySelector('a-scene');
+    const system = scene.systems["mindar-image-system"];
 
-    async function checkFile(url) {
-      try {
-        const res = await fetch(url, { method: 'HEAD' });
-        return res.ok;
-      } catch (e) {
-        return false;
-      }
-    }
-
-    async function prepare() {
-      dbg('Проверка наличия файлов...');
-      const t1 = await checkFile(TARGET_FILENAME);
-      dbg(`targets.mind доступен: ${t1}`);
-      let targetToUse = TARGET_FILENAME;
-      if (!t1) {
-        const t2 = await checkFile(ALT_TARGET_FILENAME);
-        dbg(`targets(1).mind доступен: ${t2}`);
-        if (t2) targetToUse = ALT_TARGET_FILENAME;
-        else dbg('❌ Не найден targets.mind');
-      }
-      const v = await checkFile(VIDEO_FILENAME);
-      dbg(`Видео ${VIDEO_FILENAME} доступно: ${v}`);
-      return { targetToUse, ok: ((t1 || await checkFile(ALT_TARGET_FILENAME)) && v) };
-    }
-
-    async function startCameraPreview() {
-      try {
-        dbg('Запрос камеры...');
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
-        camPreview.srcObject = stream;
-        camPreview.style.display = 'block';
-        dbg('Камера активна');
-        return stream;
-      } catch (e) {
-        dbg('Ошибка камеры: ' + e.message);
-        throw e;
-      }
-    }
-
-    async function startMindAR(targetFile) {
-      setStatus('Инициализация AR...');
-      loadingOverlay.style.display = 'flex';
-      arScene.setAttribute('mindar-image', `imageTargetSrc: ${targetFile};`);
-      await new Promise(r => setTimeout(r, 500));
-      const mindarSystem = arScene?.systems?.['mindar-image-system'];
-      await mindarSystem?.start();
-      loadingOverlay.style.display = 'none';
-      setStatus('AR запущен — ждём маркер');
-
-      arScene.addEventListener('targetFound', () => {
-        dbg('📍 Маркер найден');
-        fadeInVideo();
-      });
-      arScene.addEventListener('targetLost', () => {
-        dbg('❌ Маркер потерян');
-        pauseAndHide();
-      });
-    }
-
-    async function fadeInVideo() {
-      try {
-        videoAsset.muted = false;
-        await videoAsset.play().catch(e => dbg('🔇 Видео без звука: ' + e));
-        videoPlane.setAttribute('opacity', 0);
-        let op = 0;
-        const step = 0.05;
-        const int = setInterval(() => {
-          op += step;
-          if (op >= 1) {
-            op = 1;
-            clearInterval(int);
-          }
-          videoPlane.setAttribute('opacity', op);
-        }, 50);
-      } catch (e) {
-        dbg('Ошибка видео: ' + e.message);
-      }
-    }
-
-    function pauseAndHide() {
-      try { videoAsset.pause(); } catch (e) {}
-      videoPlane.setAttribute('opacity', 0);
+    function log(msg) {
+      console.log(msg);
+      statusBox.innerText = msg;
     }
 
     startBtn.addEventListener('click', async () => {
-      startBtn.disabled = true;
-      const prep = await prepare();
-      if (!prep.ok) {
-        dbg('Файлы не найдены. Проверь репозиторий.');
-        startBtn.disabled = false;
-        return;
-      }
-      try {
-        await startCameraPreview();
-      } catch (e) {
-        startBtn.disabled = false;
-        return;
-      }
-      setTimeout(() => {
-        startMindAR(prep.targetToUse);
-      }, 600);
+      log("Запрос доступа к камере...");
+      await system.start(); // Запуск AR
+      startBtn.style.display = "none";
+      log("Камера запущена, наведите на фото");
     });
 
-    testCamBtn.addEventListener('click', async () => {
-      testCamBtn.disabled = true;
+    scene.addEventListener("arReady", () => {
+      log("✅ AR готов. Наведите камеру на фото.");
+    });
+
+    scene.addEventListener("targetFound", async () => {
+      log("🎯 Найден маркер — воспроизводим видео");
       try {
-        await startCameraPreview();
-        setStatus('Камера предпросмотр включен');
-      } catch (e) {
-        dbg('Ошибка предпросмотра: ' + e.message);
-      } finally {
-        testCamBtn.disabled = false;
+        videoAsset.currentTime = 0;
+        videoAsset.muted = false;
+        await videoAsset.play();
+        fadeInPlane();
+      } catch(e) {
+        log("Ошибка при воспроизведении видео: " + e);
       }
     });
 
-    dbg('💡 Убедитесь, что все файлы загружены и вы используете HTTPS (GitHub Pages)');
+    scene.addEventListener("targetLost", () => {
+      log("Маркер потерян");
+      videoAsset.pause();
+      videoPlane.setAttribute("material", "opacity: 0; transparent: true; shader: flat; side: double");
+    });
+
+    function fadeInPlane() {
+      let opacity = 0;
+      const step = 0.05;
+      const intv = setInterval(() => {
+        opacity += step;
+        if (opacity >= 1) {
+          opacity = 1;
+          clearInterval(intv);
+        }
+        videoPlane.setAttribute("material", `opacity: ${opacity}; transparent: true; shader: flat; side: double`);
+      }, 50);
+    }
   </script>
 </body>
 </html>
