@@ -38,13 +38,6 @@
     <div id="debug">Debug log:</div>
     <button id="startButton">▶ Start AR (нажми и разреши камеру)</button>
 
-    <!-- Видео -->
-    <video id="videoAsset" src="./BoudoirPhotoBox.mp4"
-           preload="auto" loop playsinline
-           webkit-playsinline muted
-           style="display:none"></video>
-
-    <!-- AR сцена -->
     <a-scene
       mindar-image="imageTargetSrc: ./targets.mind;"
       color-space="sRGB"
@@ -79,6 +72,7 @@
         document.getElementById("debug").innerText += "\n» " + msg;
       };
 
+      // Теперь videoAsset обращается к единственному элементу в a-assets
       const videoAsset = document.getElementById("videoAsset");
       const videoPlane = document.getElementById("videoPlane");
       const startButton = document.getElementById("startButton");
@@ -86,7 +80,8 @@
 
       async function fadeInVideo() {
         try {
-          videoAsset.muted = false; // включаем звук, если есть
+          // MindAR требует, чтобы видео было без звука для autoplay
+          videoAsset.muted = false;
           await videoAsset.play().catch(e => dbg("play() rejected: " + e));
           let op = 0;
           const step = 0.05;
