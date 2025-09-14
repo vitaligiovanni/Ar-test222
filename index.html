@@ -1,547 +1,84 @@
 <!DOCTYPE html>
 <html lang="ru">
-<head>
+  <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AR Photo to Video</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.0/aframe.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ar.js/2.2.2/aframe-ar.min.js"></script>
+    <title>WebAR Boudoir Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+    <!-- Подключаем A-Frame и MindAR -->
+    <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+
     <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #000;
-            color: white;
-        }
-
-        /* Скрытие AR.js UI элементов */
-        .arjs-loader {
-            height: 100%;
-            width: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-            background-color: rgba(0, 0, 0, 0.8);
-            z-index: 9999;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            color: white;
-        }
-
-        .arjs-loader div {
-            text-align: center;
-            font-size: 1.25em;
-            color: white;
-            margin: 10px 0;
-        }
-
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid #333;
-            border-top: 4px solid #00ff00;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 20px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Скрытие ненужных AR.js элементов */
-        .a-enter-vr, 
-        .a-enter-ar,
-        .a-orientation-modal {
-            display: none !important;
-        }
-
-        #arjsDebugUIContainer {
-            display: none !important;
-        }
-
-        /* Инструкции */
-        #instructions {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            right: 10px;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 15px;
-            border-radius: 10px;
-            z-index: 1000;
-            text-align: center;
-            font-size: 14px;
-            border: 2px solid #00ff00;
-        }
-
-        /* Видео оверлей */
-        #videoOverlay {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(0.8);
-            width: 90%;
-            max-width: 600px;
-            z-index: 2000;
-            border-radius: 20px;
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.8);
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.6s ease;
-            background: rgba(0, 0, 0, 0.95);
-            padding: 20px;
-            border: 2px solid #00ff00;
-        }
-
-        #videoOverlay.show {
-            opacity: 1;
-            visibility: visible;
-            transform: translate(-50%, -50%) scale(1);
-        }
-
-        #overlayVideo {
-            width: 100%;
-            height: auto;
-            border-radius: 15px;
-            background: #000;
-        }
-
-        #closeBtn {
-            position: absolute;
-            top: -15px;
-            right: -15px;
-            width: 40px;
-            height: 40px;
-            background: #ff4444;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            font-size: 20px;
-            cursor: pointer;
-            z-index: 2100;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s ease;
-        }
-
-        #closeBtn:hover {
-            background: #ff6666;
-            transform: scale(1.1);
-        }
-
-        /* Fallback кнопка */
-        .fallback-button {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: linear-gradient(45deg, #00ff00, #00cc00);
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 25px;
-            font-size: 16px;
-            cursor: pointer;
-            z-index: 1500;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 255, 0, 0.3);
-        }
-
-        .fallback-button:hover {
-            transform: translateX(-50%) scale(1.05);
-        }
-
-        /* Статус маркера */
-        #markerStatus {
-            position: fixed;
-            top: 80px;
-            left: 10px;
-            right: 10px;
-            background: rgba(255, 0, 0, 0.8);
-            color: white;
-            padding: 10px;
-            border-radius: 5px;
-            z-index: 1001;
-            text-align: center;
-            font-size: 12px;
-            transition: all 0.3s ease;
-        }
-
-        #markerStatus.found {
-            background: rgba(0, 255, 0, 0.8);
-        }
-
-        /* Мобильная оптимизация */
-        @media (max-width: 768px) {
-            #instructions {
-                font-size: 12px;
-                padding: 10px;
-            }
-            
-            #videoOverlay {
-                width: 95%;
-                padding: 10px;
-            }
-        }
+      body, html {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        width: 100%;
+        height: 100%;
+        background: black;
+      }
+      #loading {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: black;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5em;
+        z-index: 10;
+      }
     </style>
-</head>
-<body>
-    <!-- Экран загрузки AR -->
-    <div class="arjs-loader">
-        <div class="spinner"></div>
-        <div>Загрузка AR системы...</div>
-        <div>Разрешите доступ к камере</div>
-        <div style="font-size: 0.9em; margin-top: 20px;">
-            Подготовьте фотографию девочки для сканирования
-        </div>
-    </div>
+  </head>
+  <body>
+    <div id="loading">Загрузка AR... Разрешите доступ к камере 📷</div>
 
-    <!-- Инструкции -->
-    <div id="instructions">
-        📷 Наведите камеру на ФОТОГРАФИЮ девочки (не на файл .mind!)
-        <br>Держите камеру стабильно на расстоянии 20-30 см
-    </div>
-
-    <!-- Статус маркера -->
-    <div id="markerStatus">
-        🔍 Ищу фотографию девочки...
-    </div>
-
-    <!-- Fallback кнопка -->
-    <button class="fallback-button" id="fallbackBtn">
-        ▶️ Воспроизвести видео
-    </button>
-
-    <!-- Видео оверлей -->
-    <div id="videoOverlay">
-        <button id="closeBtn">&times;</button>
-        <video id="overlayVideo" controls playsinline preload="metadata">
-            <source src="./BoudoirPhotoBox.mp4" type="video/mp4">
-            Ваш браузер не поддерживает видео.
-        </video>
-    </div>
-
-    <!-- AR Scene -->
     <a-scene
-        vr-mode-ui="enabled: false;"
-        renderer="logarithmicDepthBuffer: true; colorManagement: true; sortObjects: true;"
-        arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3; patternRatio: 0.8; maxDetectionRate: 30; canvasWidth: 640; canvasHeight: 480;"
-        embedded
-        gesture-detector
-        id="scene">
-        
-        <!-- Assets -->
-        <a-assets>
-            <video id="video-asset" 
-                   src="./BoudoirPhotoBox.mp4" 
-                   preload="auto" 
-                   crossorigin="anonymous" 
-                   playsinline 
-                   webkit-playsinline
-                   muted
-                   loop>
-            </video>
-        </a-assets>
+      mindar-image="imageTargetSrc: ./targets (1).mind;"
+      color-space="sRGB"
+      renderer="colorManagement: true, physicallyCorrectLights"
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: false"
+      embedded
+      loading-screen="enabled: false"
+    >
 
-        <!-- AR Маркер (NFT - Natural Feature Tracking) -->
-        <a-nft
-            type="nft"
-            url="./targets (1)"
-            smooth="true"
-            smoothCount="10"
-            smoothTolerance=".01"
-            smoothThreshold="5"
-            raycaster="objects: .clickable"
-            emitevents="true"
-            cursor="fuse: false; rayOrigin: mouse;"
-            id="nft-marker"
-            gesture-handler>
-            
-            <!-- 3D контент над маркером -->
-            <a-plane 
-                id="video-plane"
-                src="#video-asset"
-                width="2" 
-                height="1.5"
-                position="0 0 0"
-                rotation="0 0 0"
-                class="clickable"
-                gesture-handler
-                material="transparent: true; alphaTest: 0.5; shader: flat"
-                animation__found="property: scale; to: 1.2 1.2 1.2; startEvents: markerFound; dur: 500; easing: easeOutQuad"
-                animation__lost="property: scale; to: 1 1 1; startEvents: markerLost; dur: 500">
-            </a-plane>
+      <!-- Загружаем ассеты -->
+      <a-assets>
+        <video id="video-asset" src="./BoudoirPhotoBox.mp4" preload="auto" loop playsinline webkit-playsinline></video>
+      </a-assets>
 
-            <!-- Декоративные элементы -->
-            <a-text 
-                value="НАЖМИТЕ ДЛЯ ПОЛНОЭКРАННОГО ВИДЕО" 
-                position="0 -1 0" 
-                align="center" 
-                color="#00ff00"
-                scale="0.8 0.8 0.8"
-                animation="property: rotation; to: 0 360 0; loop: true; dur: 10000">
-            </a-text>
+      <!-- Камера -->
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-            <!-- Светящаяся рамка -->
-            <a-ring 
-                position="0 0 0.01" 
-                radius-inner="0.8" 
-                radius-outer="1"
-                color="#00ff00"
-                opacity="0.6"
-                material="transparent: true"
-                animation="property: rotation; to: 0 0 360; loop: true; dur: 5000">
-            </a-ring>
-
-        </a-nft>
-
-        <!-- Камера -->
-        <a-entity camera look-controls-enabled="false" arjs-look-controls="smoothingFactor: 0.1"></a-entity>
+      <!-- Объект для AR -->
+      <a-entity mindar-image-target="targetIndex: 0">
+        <a-plane src="#video-asset" position="0 0 0" height="1" width="1.5"></a-plane>
+      </a-entity>
     </a-scene>
 
     <script>
-        class ARImageTracker {
-            constructor() {
-                this.scene = document.getElementById('scene');
-                this.nftMarker = null;
-                this.videoPlane = null;
-                this.videoAsset = document.getElementById('video-asset');
-                this.overlayVideo = document.getElementById('overlayVideo');
-                this.videoOverlay = document.getElementById('videoOverlay');
-                this.closeBtn = document.getElementById('closeBtn');
-                this.fallbackBtn = document.getElementById('fallbackBtn');
-                this.markerStatus = document.getElementById('markerStatus');
-                
-                this.markerFound = false;
-                this.isFullscreenVideo = false;
-                
-                this.init();
-            }
-
-            init() {
-                // Ждем загрузки AR.js
-                this.scene.addEventListener('loaded', () => {
-                    console.log('AR сцена загружена');
-                    this.nftMarker = document.getElementById('nft-marker');
-                    this.videoPlane = document.getElementById('video-plane');
-                    this.setupEventListeners();
-                });
-
-                // Удаляем загрузчик через некоторое время
-                setTimeout(() => {
-                    const loader = document.querySelector('.arjs-loader');
-                    if (loader) {
-                        loader.style.opacity = '0';
-                        setTimeout(() => {
-                            loader.style.display = 'none';
-                        }, 1000);
-                    }
-                }, 3000);
-            }
-
-            setupEventListeners() {
-                // События маркера
-                if (this.nftMarker) {
-                    this.nftMarker.addEventListener('markerFound', () => {
-                        console.log('✅ Маркер найден!');
-                        this.onMarkerFound();
-                    });
-
-                    this.nftMarker.addEventListener('markerLost', () => {
-                        console.log('❌ Маркер потерян');
-                        this.onMarkerLost();
-                    });
-                }
-
-                // Клик по AR видео для полноэкранного режима
-                if (this.videoPlane) {
-                    this.videoPlane.addEventListener('click', () => {
-                        console.log('Клик по AR видео - переход в полноэкранный режим');
-                        this.showFullscreenVideo();
-                    });
-                }
-
-                // Fallback кнопка
-                this.fallbackBtn.addEventListener('click', () => {
-                    console.log('Fallback воспроизведение');
-                    this.showFullscreenVideo();
-                });
-
-                // Закрытие полноэкранного видео
-                this.closeBtn.addEventListener('click', () => {
-                    this.hideFullscreenVideo();
-                });
-
-                this.videoOverlay.addEventListener('click', (e) => {
-                    if (e.target === this.videoOverlay) {
-                        this.hideFullscreenVideo();
-                    }
-                });
-
-                // События видео
-                this.overlayVideo.addEventListener('ended', () => {
-                    setTimeout(() => this.hideFullscreenVideo(), 1000);
-                });
-
-                this.overlayVideo.addEventListener('error', (e) => {
-                    console.error('Ошибка видео:', e);
-                    alert('⚠️ Ошибка загрузки видео!\n\nПроверьте файл BoudoirPhotoBox.mp4');
-                });
-
-                // Обработка жестов
-                this.preventZoom();
-
-                // Дополнительная проверка маркера
-                this.startMarkerCheck();
-            }
-
-            onMarkerFound() {
-                this.markerFound = true;
-                this.markerStatus.textContent = '🎯 Фотография найдена! Нажмите для полноэкранного видео';
-                this.markerStatus.classList.add('found');
-                
-                // Запускаем AR видео
-                setTimeout(() => {
-                    this.playARVideo();
-                }, 500);
-            }
-
-            onMarkerLost() {
-                this.markerFound = false;
-                this.markerStatus.textContent = '🔍 Ищу фотографию девочки...';
-                this.markerStatus.classList.remove('found');
-                
-                // Останавливаем AR видео
-                this.pauseARVideo();
-            }
-
-            playARVideo() {
-                try {
-                    if (this.videoAsset && this.videoAsset.paused) {
-                        this.videoAsset.play().catch(error => {
-                            console.log('AR видео требует взаимодействия пользователя');
-                        });
-                    }
-                } catch (error) {
-                    console.error('Ошибка AR видео:', error);
-                }
-            }
-
-            pauseARVideo() {
-                try {
-                    if (this.videoAsset && !this.videoAsset.paused) {
-                        this.videoAsset.pause();
-                    }
-                } catch (error) {
-                    console.error('Ошибка остановки AR видео:', error);
-                }
-            }
-
-            async showFullscreenVideo() {
-                if (this.isFullscreenVideo) return;
-                
-                console.log('🎬 Показываем полноэкранное видео');
-                this.isFullscreenVideo = true;
-                
-                try {
-                    if (!this.overlayVideo.paused) {
-                        this.overlayVideo.pause();
-                    }
-                    
-                    this.overlayVideo.currentTime = 0;
-                    this.videoOverlay.classList.add('show');
-                    
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                    
-                    // Пробуем со звуком
-                    this.overlayVideo.muted = false;
-                    await this.overlayVideo.play();
-                    
-                } catch (error) {
-                    console.error('Ошибка воспроизведения:', error);
-                    
-                    try {
-                        // Fallback без звука
-                        this.overlayVideo.muted = true;
-                        await this.overlayVideo.play();
-                    } catch (mutedError) {
-                        console.error('Критическая ошибка видео:', mutedError);
-                        this.isFullscreenVideo = false;
-                        this.hideFullscreenVideo();
-                        alert('❌ Не удалось воспроизвести видео');
-                    }
-                }
-            }
-
-            hideFullscreenVideo() {
-                this.isFullscreenVideo = false;
-                
-                try {
-                    if (!this.overlayVideo.paused) {
-                        this.overlayVideo.pause();
-                    }
-                } catch (error) {
-                    console.error('Ошибка остановки:', error);
-                }
-                
-                this.videoOverlay.classList.remove('show');
-            }
-
-            startMarkerCheck() {
-                // Периодическая проверка состояния маркера
-                setInterval(() => {
-                    if (!this.markerFound) {
-                        // Дополнительные подсказки
-                        const tips = [
-                            '🔍 Ищу фотографию девочки...',
-                            '💡 Совет: держите камеру стабильно',
-                            '📏 Расстояние: 20-30 см от фото',
-                            '💡 Убедитесь, что фото хорошо освещено',
-                            '🔍 Ищу фотографию девочки...'
-                        ];
-                        
-                        const randomTip = tips[Math.floor(Math.random() * tips.length)];
-                        this.markerStatus.textContent = randomTip;
-                    }
-                }, 3000);
-            }
-
-            preventZoom() {
-                document.addEventListener('touchstart', (e) => {
-                    if (e.touches.length > 1) {
-                        e.preventDefault();
-                    }
-                }, { passive: false });
-
-                let lastTouchEnd = 0;
-                document.addEventListener('touchend', (e) => {
-                    const now = Date.now();
-                    if (now - lastTouchEnd <= 300) {
-                        e.preventDefault();
-                    }
-                    lastTouchEnd = now;
-                }, false);
-            }
-        }
-
-        // Инициализация после загрузки DOM
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('🚀 Запуск AR Image Tracker');
-            new ARImageTracker();
+      const loading = document.getElementById("loading");
+      window.addEventListener("DOMContentLoaded", () => {
+        const scene = document.querySelector("a-scene");
+        scene.addEventListener("arReady", () => {
+          loading.style.display = "none"; // скрываем экран загрузки
         });
 
-        // Обработка смены ориентации
-        window.addEventListener('orientationchange', () => {
-            setTimeout(() => {
-                location.reload();
-            }, 1000);
+        const video = document.getElementById("video-asset");
+
+        // Автостарт видео при наведении камеры на маркер
+        scene.addEventListener("targetFound", () => {
+          video.play();
         });
+
+        // Остановка, если маркер потерян
+        scene.addEventListener("targetLost", () => {
+          video.pause();
+        });
+      });
     </script>
-</body>
+  </body>
 </html>
