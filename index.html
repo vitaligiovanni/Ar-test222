@@ -10,19 +10,9 @@
       margin: 0;
       padding: 0;
       overflow: hidden;
+      height: 100%;
+      width: 100%;
       background: black;
-      height: 100%;
-      width: 100%;
-    }
-
-    #camera {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      z-index: 1;
     }
 
     #overlayVideo {
@@ -31,48 +21,37 @@
       left: 0;
       transform-origin: top left;
       display: none;
-      z-index: 2;
-      pointer-events: none; /* чтобы не мешал тачам */
+      z-index: 10;
+      pointer-events: none;
     }
   </style>
 </head>
 <body>
-  <!-- Камера -->
-  <video id="camera" autoplay playsinline></video>
+  <!-- Контейнер MindAR -->
+  <div id="ar-container"></div>
 
   <!-- Видео-оверлей -->
-  <video id="overlayVideo" autoplay playsinline muted></video>
+  <video id="overlayVideo" autoplay playsinline muted loop></video>
 
   <script>
-    const camera = document.getElementById("camera");
     const overlayVideo = document.getElementById("overlayVideo");
-
-    // Загружаем видео, которое будет поверх фотографии
     overlayVideo.src = "video.mp4";
 
-    // Запуск камеры
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-      .then(stream => {
-        camera.srcObject = stream;
-      });
-
-    // Подключаем MindAR
     const mindar = new window.MINDAR.ImageTracker({
-      container: document.body,
-      imageTargetSrc: "targets.mind"
+      container: document.querySelector("#ar-container"),
+      imageTargetSrc: "targets.mind" // файл с твоей картинкой
     });
 
-    mindar.on("targetFound", (event) => {
+    // когда фотография найдена
+    mindar.on("targetFound", () => {
       console.log("Фотография найдена!");
-
-      // Показываем видео
       overlayVideo.style.display = "block";
 
-      // Растягиваем поверх фотографии (например 300x400px, подгони под свою картинку)
+      // Пример размеров видео (подгони под фото)
       overlayVideo.style.width = "300px";
       overlayVideo.style.height = "400px";
 
-      // Позиционируем на координатах найденного объекта (пример — центр экрана)
+      // Центрируем на экране
       overlayVideo.style.top = "50%";
       overlayVideo.style.left = "50%";
       overlayVideo.style.transform = "translate(-50%, -50%)";
@@ -80,6 +59,7 @@
       overlayVideo.play();
     });
 
+    // когда потеряли фотографию
     mindar.on("targetLost", () => {
       console.log("Фотография потеряна");
       overlayVideo.pause();
