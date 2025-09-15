@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <title>PhotoBook AR</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
   <style>
@@ -14,61 +13,69 @@
       height: 100%;
       background: black;
     }
-
-    #ar-container {
-      width: 100%;
-      height: 100%;
-    }
-
-    /* показываем камеру MindAR */
-    video.mindar-camera-feed {
-      display: block !important;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      z-index: -1;
+    video {
+      display: none;
     }
   </style>
 </head>
 <body>
-  <div id="ar-container">
-    <a-scene
-      mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiLoading: yes; uiScanning: yes; uiError: yes;"
-      vr-mode-ui="enabled: false"
-      device-orientation-permission-ui="enabled: true"
-      embedded
-    >
-      <a-assets>
-        <video id="ar-video" src="./BoudoirPhotoBox.mp4"
-               loop playsinline webkit-playsinline muted></video>
-      </a-assets>
+  <a-scene
+    mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiLoading: yes; uiScanning: yes; uiError: yes;"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: true"
+    embedded
+    renderer="colorManagement: true; physicallyCorrectLights: true; alpha: true"
+  >
+    <a-assets>
+      <!-- Видео (вертикальное, 9:16) -->
+      <video 
+        id="ar-video" 
+        src="./BoudoirPhotoBox.mp4" 
+        preload="auto" 
+        loop 
+        playsinline 
+        webkit-playsinline 
+        muted
+      ></video>
+    </a-assets>
 
-      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+    <!-- Камера -->
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-      <a-entity mindar-image-target="targetIndex: 0">
-        <a-plane 
-          src="#ar-video" 
-          position="0 0 0" 
-          rotation="0 0 0" 
-          width="0.5625" 
-          height="1"
-          opacity="0"
-          animation__fadein="property: opacity; to: 1; dur: 1500; easing: easeInOutQuad"
-        ></a-plane>
-      </a-entity>
-    </a-scene>
-  </div>
+    <!-- Маркер -->
+    <a-entity mindar-image-target="targetIndex: 0">
+      <a-plane 
+        id="video-plane"
+        src="#ar-video" 
+        position="0 0 0" 
+        rotation="0 0 0" 
+        width="0.5625" 
+        height="1"
+        opacity="0"
+      ></a-plane>
+    </a-entity>
+  </a-scene>
 
   <script>
-    window.addEventListener('DOMContentLoaded', () => {
-      const arVideo = document.getElementById('ar-video');
-      document.body.addEventListener('click', () => {
-        arVideo.muted = false;
-        arVideo.play().catch(err => console.log(err));
-      }, {once: true});
+    const videoEl = document.querySelector("#ar-video");
+    const plane = document.querySelector("#video-plane");
+    const sceneEl = document.querySelector("a-scene");
+
+    // Когда маркер найден — запускаем видео и показываем плоскость
+    sceneEl.addEventListener("targetFound", async () => {
+      try {
+        await videoEl.play();
+        plane.setAttribute("animation__fadein", "property: opacity; to: 1; dur: 1000; easing: easeInOutQuad");
+        console.log("🎬 Видео запущено");
+      } catch (e) {
+        console.warn("⚠️ Видео не смогло автозапуститься:", e);
+      }
+    });
+
+    // Когда маркер потерян — останавливаем и скрываем видео
+    sceneEl.addEventListener("targetLost", () => {
+      videoEl.pause();
+      plane.setAttribute("opacity", 0);
     });
   </script>
 </body>
