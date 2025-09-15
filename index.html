@@ -1,201 +1,74 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-  <title>AR photobook — test</title>
-
-  <!-- A-Frame + MindAR (только эти 2 библиотеки) -->
-  <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-
+  <meta charset="UTF-8" />
+  <title>AR Photobook</title>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-image-three.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
   <style>
-    html,body { height:100%; margin:0; background:#000; font-family: Arial, Helvetica, sans-serif; color:#fff; }
-    a-scene, canvas { position:fixed; inset:0; width:100%; height:100%; }
-
-    #ui {
-      position: fixed;
-      z-index: 9999;
-      left: 12px;
-      top: 12px;
-      display: flex;
-      gap: 8px;
-      align-items: center;
+    body, html {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      width: 100%;
+      height: 100%;
+      background: black;
     }
-    button { padding:10px 14px; border-radius:8px; border:0; background:#1976d2; color:#fff; font-weight:700; cursor:pointer; }
-    button.secondary { background:#00b050; }
-    #status { margin-left:8px; padding:6px 8px; background:rgba(0,0,0,0.5); border-radius:6px; font-weight:600; }
-
-    #debug {
-      position: fixed;
-      left: 12px;
-      bottom: 12px;
-      right: 12px;
-      max-height: 34vh;
-      overflow:auto;
-      background: rgba(0,0,0,0.55);
-      padding: 10px;
-      border-radius: 8px;
-      font-size: 12px;
-      line-height: 1.4;
+    #ar-container {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
     }
-
-    /* Скрываем A-Frame лишние кнопки */
-    .a-enter-vr, .a-enter-ar { display:none !important; }
+    video {
+      display: none; /* скрытое DOM-видео, будет использовано как текстура */
+    }
   </style>
 </head>
 <body>
-  <div id="ui">
-    <button id="startBtn">▶ Start AR</button>
-    <button id="unmuteBtn" style="display:none" class="secondary">🔊 Включить звук</button>
-    <div id="status">Status: ожидание</div>
-  </div>
+  <div id="ar-container"></div>
 
-  <a-scene id="scene"
-           embedded
-           mindar-image="imageTargetSrc: ./targets.mind; autoStart: false;"
-           renderer="colorManagement: true, physicallyCorrectLights: true, alpha: true"
-           vr-mode-ui="enabled: false"
-           loading-screen="enabled: false">
-    <a-assets>
-      <!-- Видео-ассет (не проигрываем заранее, ждём targetFound) -->
-      <video id="videoAsset" src="./BoudoirPhotoBox.mp4" preload="auto" loop playsinline webkit-playsinline muted crossorigin="anonymous"></video>
-    </a-assets>
+  <!-- Видео в DOM, чтобы браузер разрешил autoplay -->
+  <video id="ar-video" src="video.mp4" muted playsinline preload="auto" loop></video>
 
-    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+  <script type="module">
+    import { MindARThree } from "https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-image-three.prod.js";
 
-    <!-- Плоскость привязана к targetIndex:0 (у тебя должен быть первый таргет) -->
-    <a-entity id="anchor0" mindar-image-target="targetIndex: 0">
-      <a-plane id="videoPlane" src="#videoAsset"
-               material="shader: flat; transparent: true; opacity: 0; side: double"
-               rotation="0 0 0"></a-plane>
-    </a-entity>
-  </a-scene>
-
-  <div id="debug"><b>debug</b><br></div>
-
-<script>
-  const logEl = document.getElementById('debug');
-  function dbg(msg){ console.log(msg); logEl.innerHTML += `<div>» ${msg}</div>`; logEl.scrollTop = logEl.scrollHeight; }
-  const statusEl = document.getElementById('status');
-  function status(s){ statusEl.innerText = 'Status: ' + s; dbg(s); }
-
-  const startBtn = document.getElementById('startBtn');
-  const unmuteBtn = document.getElementById('unmuteBtn');
-  const sceneEl = document.getElementById('scene');
-  const videoAsset = document.getElementById('videoAsset');
-  const plane = document.getElementById('videoPlane');
-
-  // Проверки файлов (HEAD), чтобы заранее поймать 404
-  async function fileExists(url){
-    try{
-      const r = await fetch(url, { method: 'HEAD' });
-      return r.ok;
-    }catch(e){ return false; }
-  }
-
-  async function prepareCheck(){
-    const t = await fileExists('./targets.mind');
-    const v = await fileExists('./BoudoirPhotoBox.mp4');
-    dbg(`targets.mind ${t ? 'FOUND' : 'MISSING'}`);
-    dbg(`BoudoirPhotoBox.mp4 ${v ? 'FOUND' : 'MISSING'}`);
-    if(!t) status('Ошибка: targets.mind не найден. Переименуй targets (1).mind → targets.mind');
-    if(!v) status('Ошибка: BoudoirPhotoBox.mp4 не найден.');
-    return t && v;
-  }
-
-  // Подгоняем размер плоскости по реальному соотношению видео
-  videoAsset.addEventListener('loadedmetadata', () => {
-    const w = videoAsset.videoWidth;
-    const h = videoAsset.videoHeight;
-    if(w && h){
-      // задаём базовую высоту = 1 (единица в AR) и ширину по aspect
-      const baseH = 1.0;
-      const baseW = (w / h) * baseH;
-      plane.setAttribute('width', baseW);
-      plane.setAttribute('height', baseH);
-      dbg(`Матчинг размера плоскости: video ${w}x${h} → plane ${baseW.toFixed(3)} x ${baseH}`);
-    } else dbg('video metadata отсутствуют');
-  });
-
-  // Fade helper (меняет material opacity через setAttribute material)
-  function fadeTo(op, duration=400){
-    // простой шаговый fade
-    const start = parseFloat(plane.getAttribute('material').opacity || 0);
-    const steps = Math.max(8, Math.round(duration / 40));
-    let i = 0;
-    const delta = (op - start) / steps;
-    const id = setInterval(()=>{
-      i++;
-      const cur = start + delta * i;
-      plane.setAttribute('material', `shader: flat; transparent: true; opacity: ${Math.max(0,Math.min(1,cur))}; side: double`);
-      if(i >= steps) clearInterval(id);
-    }, 40);
-  }
-
-  // Основная функция старта MindAR
-  async function startAR(){
-    startBtn.disabled = true;
-    status('Проверка файлов...');
-    const ok = await prepareCheck();
-    if(!ok){ startBtn.disabled = false; return; }
-
-    try{
-      status('Запрос разрешения на камеру...');
-      // запускаем систему MindAR (пользовательский жест - клик по кнопке)
-      const system = sceneEl.systems['mindar-image-system'];
-      if(!system){
-        dbg('Ошибка: mindar-image-system не обнаружена в сцене');
-        status('Ошибка init: mindar system missing');
-        startBtn.disabled = false;
-        return;
-      }
-      await system.start(); // <- пользовательское разрешение камеры запрошено здесь
-      status('AR запущен — камера активна');
-      dbg('system.start() выполнен');
-
-      // Слушаем события
-      sceneEl.addEventListener('arReady', () => dbg('arReady'));
-      sceneEl.addEventListener('targetFound', (ev) => {
-        dbg('targetFound');
-        // play muted video (autoplay policy)
-        videoAsset.muted = true;
-        videoAsset.currentTime = 0;
-        videoAsset.play().catch(e => dbg('video.play() rejected: ' + e));
-        fadeTo(1, 300);
-        // показываем кнопку звука (которую пользователь потом может нажать)
-        unmuteBtn.style.display = 'inline-block';
-      });
-      sceneEl.addEventListener('targetLost', () => {
-        dbg('targetLost');
-        videoAsset.pause();
-        fadeTo(0, 200);
+    const startAR = async () => {
+      const mindarThree = new MindARThree({
+        container: document.querySelector("#ar-container"),
+        imageTargetSrc: "targets.mind", // твой файл с фотографиями
       });
 
-      // Optional: report mindar internal errors
-      window.addEventListener('error', (e) => dbg('window.error: '+ e.message));
-      window.addEventListener('unhandledrejection', (e) => dbg('unhandledrejection: '+ (e.reason?.message || e.reason)));
+      const { renderer, scene, camera } = mindarThree;
 
-    }catch(err){
-      dbg('Ошибка при старте AR: ' + (err?.message || err));
-      status('Ошибка старта AR — см. debug');
-      startBtn.disabled = false;
-    }
-  }
+      // создаём видеотекстуру
+      const video = document.querySelector("#ar-video");
+      const texture = new THREE.VideoTexture(video);
 
-  startBtn.addEventListener('click', startAR);
+      const geometry = new THREE.PlaneGeometry(1, 1.5); // вертикальный формат
+      const material = new THREE.MeshBasicMaterial({ map: texture });
+      const plane = new THREE.Mesh(geometry, material);
 
-  unmuteBtn.addEventListener('click', async ()=>{
-    try{
-      videoAsset.muted = false;
-      await videoAsset.play();
-      dbg('Звук включён');
-      unmuteBtn.style.display = 'none';
-    }catch(e){ dbg('Не удалось включить звук: '+ e); }
-  });
+      const anchor = mindarThree.addAnchor(0); // первая цель в targets.mind
+      anchor.group.add(plane);
 
-  // Подсказка: лог запуска
-  dbg('Готово: нажмите Start AR. Убедитесь, что targets.mind и BoudoirPhotoBox.mp4 лежат рядом с index.html и что сайт работает по HTTPS.');
-</script>
+      // события
+      anchor.onTargetFound = () => {
+        video.play();
+      };
+      anchor.onTargetLost = () => {
+        video.pause();
+      };
+
+      await mindarThree.start();
+
+      renderer.setAnimationLoop(() => {
+        renderer.render(scene, camera);
+      });
+    };
+
+    startAR();
+  </script>
 </body>
 </html>
