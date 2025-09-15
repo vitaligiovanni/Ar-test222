@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <title>AR Photobook</title>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-image-three.prod.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-image-three.prod.js"></script>
   <style>
     body, html {
       margin: 0;
@@ -20,40 +20,63 @@
       height: 100%;
       overflow: hidden;
     }
-    video {
-      display: none; /* скрытое DOM-видео, будет использовано как текстура */
+    #ui {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 10;
+      display: flex;
+      gap: 10px;
+    }
+    button {
+      padding: 10px 14px;
+      border-radius: 6px;
+      border: none;
+      font-weight: bold;
+      background: #1a73e8;
+      color: #fff;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
   <div id="ar-container"></div>
 
-  <!-- Видео в DOM, чтобы браузер разрешил autoplay -->
-  <video id="ar-video" src="video.mp4" muted playsinline preload="auto" loop></video>
+  <!-- Видео для текстуры -->
+  <video id="ar-video" src="BoudoirPhotoBox.mp4" playsinline loop preload="auto" muted></video>
+
+  <div id="ui">
+    <button id="startBtn">▶ Start AR</button>
+    <button id="soundBtn">🔊 Добавить звук</button>
+  </div>
 
   <script type="module">
     import { MindARThree } from "https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-image-three.prod.js";
 
+    let video;
+
     const startAR = async () => {
       const mindarThree = new MindARThree({
         container: document.querySelector("#ar-container"),
-        imageTargetSrc: "targets.mind", // твой файл с фотографиями
+        imageTargetSrc: "targets.mind",
       });
 
       const { renderer, scene, camera } = mindarThree;
 
-      // создаём видеотекстуру
-      const video = document.querySelector("#ar-video");
+      // подключаем видео как текстуру
+      video = document.querySelector("#ar-video");
       const texture = new THREE.VideoTexture(video);
 
-      const geometry = new THREE.PlaneGeometry(1, 1.5); // вертикальный формат
+      // формат плоскости под видео
+      const geometry = new THREE.PlaneGeometry(1, 1.5); // вертикальная пропорция
       const material = new THREE.MeshBasicMaterial({ map: texture });
       const plane = new THREE.Mesh(geometry, material);
 
-      const anchor = mindarThree.addAnchor(0); // первая цель в targets.mind
+      // привязываем к первому таргету
+      const anchor = mindarThree.addAnchor(0);
       anchor.group.add(plane);
 
-      // события
+      // событие: нашли фотографию → запуск видео
       anchor.onTargetFound = () => {
         video.play();
       };
@@ -68,7 +91,20 @@
       });
     };
 
-    startAR();
+    document.getElementById("startBtn").addEventListener("click", () => {
+      startAR();
+    });
+
+    document.getElementById("soundBtn").addEventListener("click", async () => {
+      if (video) {
+        video.muted = false;
+        try {
+          await video.play();
+        } catch (e) {
+          console.log("Не удалось включить звук:", e);
+        }
+      }
+    });
   </script>
 </body>
 </html>
