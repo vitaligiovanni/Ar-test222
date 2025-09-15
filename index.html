@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0" />
   <title>AR photobook — test</title>
 
-  <!-- A-Frame + MindAR (только эти 2 библиотеки) -->
+  <!-- A-Frame + MindAR -->
   <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
@@ -54,17 +54,18 @@
   <a-scene id="scene"
            embedded
            mindar-image="imageTargetSrc: ./targets.mind; autoStart: false;"
+           arjs="sourceType: webcam; videoTexture: true;"
            renderer="colorManagement: true, physicallyCorrectLights: true, alpha: true"
            vr-mode-ui="enabled: false"
            loading-screen="enabled: false">
     <a-assets>
-      <!-- Видео-ассет (не проигрываем заранее, ждём targetFound) -->
+      <!-- Видео-ассет -->
       <video id="videoAsset" src="./BoudoirPhotoBox.mp4" preload="auto" loop playsinline webkit-playsinline muted crossorigin="anonymous"></video>
     </a-assets>
 
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-    <!-- Плоскость привязана к targetIndex:0 (у тебя должен быть первый таргет) -->
+    <!-- Плоскость привязана к targetIndex:0 -->
     <a-entity id="anchor0" mindar-image-target="targetIndex: 0">
       <a-plane id="videoPlane" src="#videoAsset"
                material="shader: flat; transparent: true; opacity: 0; side: double"
@@ -86,7 +87,7 @@
   const videoAsset = document.getElementById('videoAsset');
   const plane = document.getElementById('videoPlane');
 
-  // Проверки файлов (HEAD), чтобы заранее поймать 404
+  // Проверки файлов (HEAD)
   async function fileExists(url){
     try{
       const r = await fetch(url, { method: 'HEAD' });
@@ -109,7 +110,6 @@
     const w = videoAsset.videoWidth;
     const h = videoAsset.videoHeight;
     if(w && h){
-      // задаём базовую высоту = 1 (единица в AR) и ширину по aspect
       const baseH = 1.0;
       const baseW = (w / h) * baseH;
       plane.setAttribute('width', baseW);
@@ -118,9 +118,8 @@
     } else dbg('video metadata отсутствуют');
   });
 
-  // Fade helper (меняет material opacity через setAttribute material)
+  // Fade helper
   function fadeTo(op, duration=400){
-    // простой шаговый fade
     const start = parseFloat(plane.getAttribute('material').opacity || 0);
     const steps = Math.max(8, Math.round(duration / 40));
     let i = 0;
@@ -142,7 +141,6 @@
 
     try{
       status('Запрос разрешения на камеру...');
-      // запускаем систему MindAR (пользовательский жест - клик по кнопке)
       const system = sceneEl.systems['mindar-image-system'];
       if(!system){
         dbg('Ошибка: mindar-image-system не обнаружена в сцене');
@@ -150,7 +148,7 @@
         startBtn.disabled = false;
         return;
       }
-      await system.start(); // <- пользовательское разрешение камеры запрошено здесь
+      await system.start();
       status('AR запущен — камера активна');
       dbg('system.start() выполнен');
 
@@ -158,12 +156,10 @@
       sceneEl.addEventListener('arReady', () => dbg('arReady'));
       sceneEl.addEventListener('targetFound', (ev) => {
         dbg('targetFound');
-        // play muted video (autoplay policy)
         videoAsset.muted = true;
         videoAsset.currentTime = 0;
         videoAsset.play().catch(e => dbg('video.play() rejected: ' + e));
         fadeTo(1, 300);
-        // показываем кнопку звука (которую пользователь потом может нажать)
         unmuteBtn.style.display = 'inline-block';
       });
       sceneEl.addEventListener('targetLost', () => {
@@ -172,7 +168,7 @@
         fadeTo(0, 200);
       });
 
-      // Optional: report mindar internal errors
+      // Обработка ошибок
       window.addEventListener('error', (e) => dbg('window.error: '+ e.message));
       window.addEventListener('unhandledrejection', (e) => dbg('unhandledrejection: '+ (e.reason?.message || e.reason)));
 
@@ -194,7 +190,7 @@
     }catch(e){ dbg('Не удалось включить звук: '+ e); }
   });
 
-  // Подсказка: лог запуска
+  // Подсказка
   dbg('Готово: нажмите Start AR. Убедитесь, что targets.mind и BoudoirPhotoBox.mp4 лежат рядом с index.html и что сайт работает по HTTPS.');
 </script>
 </body>
