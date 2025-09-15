@@ -1,109 +1,80 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>AR Photobook</title>
+  <title>AR Video Test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Three.js -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-image-three.prod.js"></script>
+
+  <!-- MindAR -->
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"></script>
+
   <style>
     body, html {
       margin: 0;
       padding: 0;
       overflow: hidden;
+      background: #000;
       width: 100%;
       height: 100%;
-      background: black;
     }
-    #ar-container {
-      position: absolute;
+    #container {
       width: 100%;
       height: 100%;
-      overflow: hidden;
+      position: relative;
     }
-    #ui {
+    video {
+      display: none; /* видео как текстура */
+    }
+    button {
       position: absolute;
       top: 10px;
       left: 10px;
-      z-index: 10;
-      display: flex;
-      gap: 10px;
-    }
-    button {
-      padding: 10px 14px;
-      border-radius: 6px;
-      border: none;
-      font-weight: bold;
-      background: #1a73e8;
-      color: #fff;
-      cursor: pointer;
+      z-index: 999;
+      padding: 10px 15px;
+      font-size: 16px;
     }
   </style>
 </head>
 <body>
-  <div id="ar-container"></div>
+  <div id="container"></div>
 
-  <!-- Видео для текстуры -->
-  <video id="ar-video" src="BoudoirPhotoBox.mp4" playsinline loop preload="auto" muted></video>
-
-  <div id="ui">
-    <button id="startBtn">▶ Start AR</button>
-    <button id="soundBtn">🔊 Добавить звук</button>
-  </div>
+  <!-- Видео для наложения -->
+  <video id="ar-video" src="video.mp4" loop playsinline></video>
 
   <script type="module">
-    import { MindARThree } from "https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-image-three.prod.js";
+    import { MindARThree } from "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js";
 
-    let video;
-
-    const startAR = async () => {
+    document.addEventListener("DOMContentLoaded", async () => {
       const mindarThree = new MindARThree({
-        container: document.querySelector("#ar-container"),
-        imageTargetSrc: "targets.mind",
+        container: document.querySelector("#container"),
+        imageTargetSrc: "./targets.mind", // твой файл с маркерами
       });
 
       const { renderer, scene, camera } = mindarThree;
 
-      // подключаем видео как текстуру
-      video = document.querySelector("#ar-video");
+      // создаем текстуру из видео
+      const video = document.querySelector("#ar-video");
       const texture = new THREE.VideoTexture(video);
 
-      // формат плоскости под видео
-      const geometry = new THREE.PlaneGeometry(1, 1.5); // вертикальная пропорция
+      const geometry = new THREE.PlaneGeometry(1, 1.5); // подгоняй под соотношение сторон
       const material = new THREE.MeshBasicMaterial({ map: texture });
       const plane = new THREE.Mesh(geometry, material);
 
-      // привязываем к первому таргету
-      const anchor = mindarThree.addAnchor(0);
+      // создаём "якорь" (marker)
+      const anchor = mindarThree.addAnchor(0); // id = 0 (первый маркер из targets.mind)
       anchor.group.add(plane);
 
-      // событие: нашли фотографию → запуск видео
-      anchor.onTargetFound = () => {
-        video.play();
-      };
-      anchor.onTargetLost = () => {
-        video.pause();
-      };
-
+      // запускаем движок
       await mindarThree.start();
+      video.play();
 
+      // рендерим сцену
       renderer.setAnimationLoop(() => {
         renderer.render(scene, camera);
       });
-    };
-
-    document.getElementById("startBtn").addEventListener("click", () => {
-      startAR();
-    });
-
-    document.getElementById("soundBtn").addEventListener("click", async () => {
-      if (video) {
-        video.muted = false;
-        try {
-          await video.play();
-        } catch (e) {
-          console.log("Не удалось включить звук:", e);
-        }
-      }
     });
   </script>
 </body>
