@@ -16,9 +16,9 @@
       margin: 0;
       padding: 0;
       overflow: hidden;
-      background: #000;
       width: 100%;
       height: 100%;
+      background: black;
     }
     #container {
       width: 100%;
@@ -26,15 +26,7 @@
       position: relative;
     }
     video {
-      display: none; /* видео как текстура */
-    }
-    button {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      z-index: 999;
-      padding: 10px 15px;
-      font-size: 16px;
+      display: none; /* используем только как текстуру */
     }
   </style>
 </head>
@@ -42,7 +34,7 @@
   <div id="container"></div>
 
   <!-- Видео для наложения -->
-  <video id="ar-video" src="video.mp4" loop playsinline></video>
+  <video id="ar-video" src="video.mp4" playsinline loop muted></video>
 
   <script type="module">
     import { MindARThree } from "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js";
@@ -50,28 +42,36 @@
     document.addEventListener("DOMContentLoaded", async () => {
       const mindarThree = new MindARThree({
         container: document.querySelector("#container"),
-        imageTargetSrc: "./targets.mind", // твой файл с маркерами
+        imageTargetSrc: "./targets.mind", // твой маркер
       });
 
       const { renderer, scene, camera } = mindarThree;
 
-      // создаем текстуру из видео
+      // Создаем текстуру из видео
       const video = document.querySelector("#ar-video");
       const texture = new THREE.VideoTexture(video);
 
-      const geometry = new THREE.PlaneGeometry(1, 1.5); // подгоняй под соотношение сторон
+      const geometry = new THREE.PlaneGeometry(1, 1.5); // пропорции подгони под фото
       const material = new THREE.MeshBasicMaterial({ map: texture });
       const plane = new THREE.Mesh(geometry, material);
 
-      // создаём "якорь" (marker)
-      const anchor = mindarThree.addAnchor(0); // id = 0 (первый маркер из targets.mind)
+      const anchor = mindarThree.addAnchor(0); // первый маркер
       anchor.group.add(plane);
 
-      // запускаем движок
-      await mindarThree.start();
-      video.play();
+      // При появлении маркера запускаем видео
+      anchor.onTargetFound = () => {
+        video.currentTime = 0;
+        video.play().catch(e => console.warn("Autoplay blocked:", e));
+      };
 
-      // рендерим сцену
+      // При потере маркера — останавливаем
+      anchor.onTargetLost = () => {
+        video.pause();
+      };
+
+      // Запускаем движок
+      await mindarThree.start();
+
       renderer.setAnimationLoop(() => {
         renderer.render(scene, camera);
       });
