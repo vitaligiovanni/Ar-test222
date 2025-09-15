@@ -1,82 +1,92 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>PhotoBook AR</title>
-  <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AR Video Overlay</title>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar/dist/mindar-image.prod.js"></script>
   <style>
     body, html {
       margin: 0;
       padding: 0;
       overflow: hidden;
-      height: 100%;
       background: black;
+      height: 100%;
+      width: 100%;
     }
-    video {
+
+    #camera {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 1;
+    }
+
+    #overlayVideo {
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform-origin: top left;
       display: none;
+      z-index: 2;
+      pointer-events: none; /* чтобы не мешал тачам */
     }
   </style>
 </head>
 <body>
-  <a-scene
-    mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiLoading: yes; uiScanning: yes; uiError: yes;"
-    vr-mode-ui="enabled: false"
-    device-orientation-permission-ui="enabled: true"
-    embedded
-    renderer="colorManagement: true; physicallyCorrectLights: true; alpha: true"
-  >
-    <a-assets>
-      <!-- Видео (вертикальное, 9:16) -->
-      <video 
-        id="ar-video" 
-        src="./BoudoirPhotoBox.mp4" 
-        preload="auto" 
-        loop 
-        playsinline 
-        webkit-playsinline 
-        muted
-      ></video>
-    </a-assets>
+  <!-- Камера -->
+  <video id="camera" autoplay playsinline></video>
 
-    <!-- Камера -->
-    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-
-    <!-- Маркер -->
-    <a-entity mindar-image-target="targetIndex: 0">
-      <a-plane 
-        id="video-plane"
-        src="#ar-video" 
-        position="0 0 0" 
-        rotation="0 0 0" 
-        width="0.5625" 
-        height="1"
-        opacity="0"
-      ></a-plane>
-    </a-entity>
-  </a-scene>
+  <!-- Видео-оверлей -->
+  <video id="overlayVideo" autoplay playsinline muted></video>
 
   <script>
-    const videoEl = document.querySelector("#ar-video");
-    const plane = document.querySelector("#video-plane");
-    const sceneEl = document.querySelector("a-scene");
+    const camera = document.getElementById("camera");
+    const overlayVideo = document.getElementById("overlayVideo");
 
-    // Когда маркер найден — запускаем видео и показываем плоскость
-    sceneEl.addEventListener("targetFound", async () => {
-      try {
-        await videoEl.play();
-        plane.setAttribute("animation__fadein", "property: opacity; to: 1; dur: 1000; easing: easeInOutQuad");
-        console.log("🎬 Видео запущено");
-      } catch (e) {
-        console.warn("⚠️ Видео не смогло автозапуститься:", e);
-      }
+    // Загружаем видео, которое будет поверх фотографии
+    overlayVideo.src = "video.mp4";
+
+    // Запуск камеры
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+      .then(stream => {
+        camera.srcObject = stream;
+      });
+
+    // Подключаем MindAR
+    const mindar = new window.MINDAR.ImageTracker({
+      container: document.body,
+      imageTargetSrc: "targets.mind"
     });
 
-    // Когда маркер потерян — останавливаем и скрываем видео
-    sceneEl.addEventListener("targetLost", () => {
-      videoEl.pause();
-      plane.setAttribute("opacity", 0);
+    mindar.on("targetFound", (event) => {
+      console.log("Фотография найдена!");
+
+      // Показываем видео
+      overlayVideo.style.display = "block";
+
+      // Растягиваем поверх фотографии (например 300x400px, подгони под свою картинку)
+      overlayVideo.style.width = "300px";
+      overlayVideo.style.height = "400px";
+
+      // Позиционируем на координатах найденного объекта (пример — центр экрана)
+      overlayVideo.style.top = "50%";
+      overlayVideo.style.left = "50%";
+      overlayVideo.style.transform = "translate(-50%, -50%)";
+
+      overlayVideo.play();
     });
+
+    mindar.on("targetLost", () => {
+      console.log("Фотография потеряна");
+      overlayVideo.pause();
+      overlayVideo.style.display = "none";
+    });
+
+    mindar.start();
   </script>
 </body>
 </html>
