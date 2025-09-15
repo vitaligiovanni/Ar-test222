@@ -1,18 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <title>AR Video Test</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- Three.js -->
+  <title>AR Photobook</title>
   <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
-
-  <!-- MindAR -->
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"></script>
-
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-image-three.prod.js"></script>
   <style>
-    html, body {
+    body, html {
       margin: 0;
       padding: 0;
       overflow: hidden;
@@ -20,87 +14,96 @@
       height: 100%;
       background: black;
     }
-    #container {
+    #ar-container {
+      position: absolute;
       width: 100%;
       height: 100%;
-      position: relative;
+      overflow: hidden;
     }
-    video {
-      display: none; /* используем как текстуру */
-    }
-    #unmuteBtn {
+    #ui {
       position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 10px 20px;
-      font-size: 16px;
-      background: rgba(0,0,0,0.6);
-      color: white;
+      top: 10px;
+      left: 10px;
+      z-index: 10;
+      display: flex;
+      gap: 10px;
+    }
+    button {
+      padding: 10px 14px;
+      border-radius: 6px;
       border: none;
-      border-radius: 8px;
-      display: none;
+      font-weight: bold;
+      background: #1a73e8;
+      color: #fff;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <div id="container"></div>
+  <div id="ar-container"></div>
 
-  <!-- Видео -->
-  <video id="ar-video" src="video.mp4" playsinline loop muted></video>
-  <button id="unmuteBtn">🔊 Включить звук</button>
+  <!-- Видео для текстуры -->
+  <video id="ar-video" src="BoudoirPhotoBox.mp4" playsinline loop preload="auto" muted></video>
+
+  <div id="ui">
+    <button id="startBtn">▶ Start AR</button>
+    <button id="soundBtn">🔊 Добавить звук</button>
+  </div>
 
   <script type="module">
-    import { MindARThree } from "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js";
+    import { MindARThree } from "https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-image-three.prod.js";
 
-    document.addEventListener("DOMContentLoaded", async () => {
-      console.log("Инициализация MindAR...");
+    let video;
 
+    const startAR = async () => {
       const mindarThree = new MindARThree({
-        container: document.querySelector("#container"),
-        imageTargetSrc: "./targets.mind", // твой файл маркеров
+        container: document.querySelector("#ar-container"),
+        imageTargetSrc: "targets.mind",
       });
 
       const { renderer, scene, camera } = mindarThree;
 
-      const video = document.querySelector("#ar-video");
+      // подключаем видео как текстуру
+      video = document.querySelector("#ar-video");
       const texture = new THREE.VideoTexture(video);
 
-      // Соотношение сторон под видео (подгони под фото)
-      const geometry = new THREE.PlaneGeometry(1, 1.5);
+      // формат плоскости под видео
+      const geometry = new THREE.PlaneGeometry(1, 1.5); // вертикальная пропорция
       const material = new THREE.MeshBasicMaterial({ map: texture });
       const plane = new THREE.Mesh(geometry, material);
 
+      // привязываем к первому таргету
       const anchor = mindarThree.addAnchor(0);
       anchor.group.add(plane);
 
-      // Лог событий
+      // событие: нашли фотографию → запуск видео
       anchor.onTargetFound = () => {
-        console.log("📸 Маркер найден!");
-        video.currentTime = 0;
-        video.play().then(() => {
-          document.getElementById("unmuteBtn").style.display = "block";
-        }).catch(err => console.warn("Ошибка автозапуска видео:", err));
+        video.play();
       };
-
       anchor.onTargetLost = () => {
-        console.log("❌ Маркер потерян");
         video.pause();
       };
 
       await mindarThree.start();
-      console.log("✅ Камера запущена, ждём маркер...");
 
       renderer.setAnimationLoop(() => {
         renderer.render(scene, camera);
       });
+    };
 
-      // Кнопка для включения звука
-      document.getElementById("unmuteBtn").addEventListener("click", () => {
+    document.getElementById("startBtn").addEventListener("click", () => {
+      startAR();
+    });
+
+    document.getElementById("soundBtn").addEventListener("click", async () => {
+      if (video) {
         video.muted = false;
-        video.play();
-        document.getElementById("unmuteBtn").style.display = "none";
-      });
+        try {
+          await video.play();
+        } catch (e) {
+          console.log("Не удалось включить звук:", e);
+        }
+      }
     });
   </script>
 </body>
