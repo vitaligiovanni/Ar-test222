@@ -3,8 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AR Video Overlay</title>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar/dist/mindar-image.prod.js"></script>
+  <title>AR Video on Photo</title>
+
+  <!-- Подключаем MindAR + three.js -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"></script>
+
   <style>
     body, html {
       margin: 0;
@@ -14,59 +18,59 @@
       width: 100%;
       background: black;
     }
-
-    #overlayVideo {
+    canvas {
       position: absolute;
       top: 0;
       left: 0;
-      transform-origin: top left;
-      display: none;
-      z-index: 10;
-      pointer-events: none;
     }
   </style>
 </head>
 <body>
-  <!-- Контейнер MindAR -->
-  <div id="ar-container"></div>
-
-  <!-- Видео-оверлей -->
-  <video id="overlayVideo" autoplay playsinline muted loop></video>
-
   <script>
-    const overlayVideo = document.getElementById("overlayVideo");
-    overlayVideo.src = "video.mp4";
+    document.addEventListener("DOMContentLoaded", async () => {
+      // создаём AR-контейнер
+      const mindarThree = new window.MINDAR.IMAGE.MindARThree({
+        container: document.body,
+        imageTargetSrc: "./targets.mind", // твой файл с фото-таргетом
+      });
 
-    const mindar = new window.MINDAR.ImageTracker({
-      container: document.querySelector("#ar-container"),
-      imageTargetSrc: "targets.mind" // файл с твоей картинкой
+      const {renderer, scene, camera} = mindarThree;
+
+      // создаём видео-текстуру
+      const video = document.createElement("video");
+      video.src = "./video.mp4"; // твоё видео рядом с index.html
+      video.crossOrigin = "anonymous";
+      video.loop = true;
+      video.muted = false;
+      video.playsInline = true;
+
+      const texture = new THREE.VideoTexture(video);
+
+      // плоскость под видео (соразмерна фото-таргету)
+      const geometry = new THREE.PlaneGeometry(1, 1.5); // подгони пропорции под фото
+      const material = new THREE.MeshBasicMaterial({map: texture});
+      const plane = new THREE.Mesh(geometry, material);
+
+      // привязываем плоскость к таргету
+      const anchor = mindarThree.addAnchor(0);
+      anchor.group.add(plane);
+
+      // включаем воспроизведение при обнаружении фото
+      anchor.onTargetFound = () => {
+        console.log("Фото найдено!");
+        video.play();
+      };
+      anchor.onTargetLost = () => {
+        console.log("Фото потеряно!");
+        video.pause();
+      };
+
+      await mindarThree.start();
+
+      renderer.setAnimationLoop(() => {
+        renderer.render(scene, camera);
+      });
     });
-
-    // когда фотография найдена
-    mindar.on("targetFound", () => {
-      console.log("Фотография найдена!");
-      overlayVideo.style.display = "block";
-
-      // Пример размеров видео (подгони под фото)
-      overlayVideo.style.width = "300px";
-      overlayVideo.style.height = "400px";
-
-      // Центрируем на экране
-      overlayVideo.style.top = "50%";
-      overlayVideo.style.left = "50%";
-      overlayVideo.style.transform = "translate(-50%, -50%)";
-
-      overlayVideo.play();
-    });
-
-    // когда потеряли фотографию
-    mindar.on("targetLost", () => {
-      console.log("Фотография потеряна");
-      overlayVideo.pause();
-      overlayVideo.style.display = "none";
-    });
-
-    mindar.start();
   </script>
 </body>
 </html>
