@@ -2,17 +2,38 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
   <title>AR photobook — test</title>
 
-  <!-- A-Frame + MindAR -->
+  <!-- A-Frame + MindAR (обновляем до последней версии) -->
   <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
   <style>
-    html,body { height:100%; margin:0; background:#000; font-family: Arial, Helvetica, sans-serif; color:#fff; }
-    a-scene, canvas { position:fixed; inset:0; width:100%; height:100%; }
-
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: transparent;
+      font-family: Arial, Helvetica, sans-serif;
+      color: #fff;
+      overflow: hidden;
+    }
+    a-scene, canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      background: transparent !important;
+      z-index: 0;
+    }
+    #mindar-video {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: -1;
+    }
     #ui {
       position: fixed;
       z-index: 9999;
@@ -22,26 +43,42 @@
       gap: 8px;
       align-items: center;
     }
-    button { padding:10px 14px; border-radius:8px; border:0; background:#1976d2; color:#fff; font-weight:700; cursor:pointer; }
-    button.secondary { background:#00b050; }
-    #status { margin-left:8px; padding:6px 8px; background:rgba(0,0,0,0.5); border-radius:6px; font-weight:600; }
-
+    button {
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 0;
+      background: #1976d2;
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button.secondary {
+      background: #00b050;
+    }
+    #status {
+      margin-left: 8px;
+      padding: 6px 8px;
+      background: rgba(0,0,0,0.5);
+      border-radius: 6px;
+      font-weight: 600;
+    }
     #debug {
       position: fixed;
       left: 12px;
       bottom: 12px;
       right: 12px;
       max-height: 34vh;
-      overflow:auto;
+      overflow: auto;
       background: rgba(0,0,0,0.55);
       padding: 10px;
       border-radius: 8px;
       font-size: 12px;
       line-height: 1.4;
     }
-
-    /* Скрываем A-Frame лишние кнопки */
-    .a-enter-vr, .a-enter-ar { display:none !important; }
+    /* Скрываем лишние кнопки A-Frame */
+    .a-enter-vr, .a-enter-ar {
+      display: none !important;
+    }
   </style>
 </head>
 <body>
@@ -54,7 +91,7 @@
   <a-scene id="scene"
            embedded
            mindar-image="imageTargetSrc: ./targets.mind; autoStart: false;"
-           arjs="sourceType: webcam; videoTexture: true;"
+           arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;"
            renderer="colorManagement: true, physicallyCorrectLights: true, alpha: true"
            vr-mode-ui="enabled: false"
            loading-screen="enabled: false">
@@ -87,7 +124,7 @@
   const videoAsset = document.getElementById('videoAsset');
   const plane = document.getElementById('videoPlane');
 
-  // Проверки файлов (HEAD)
+  // Проверки файлов
   async function fileExists(url){
     try{
       const r = await fetch(url, { method: 'HEAD' });
@@ -151,6 +188,21 @@
       await system.start();
       status('AR запущен — камера активна');
       dbg('system.start() выполнен');
+
+      // Проверка видеопотока
+      const video = document.querySelector('video:not(#videoAsset)');
+      if(video && video.srcObject){
+        video.id = 'mindar-video';
+        video.style.position = 'fixed';
+        video.style.inset = '0';
+        video.style.width = '100%';
+        video.style.height = '100%';
+        video.style.objectFit = 'cover';
+        video.style.zIndex = '-1';
+        dbg('Видеопоток камеры активен и настроен');
+      } else {
+        dbg('Ошибка: видеопоток камеры не обнаружен');
+      }
 
       // Слушаем события
       sceneEl.addEventListener('arReady', () => dbg('arReady'));
