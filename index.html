@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
   <title>AR photobook — test</title>
 
-  <!-- A-Frame + MindAR (обновляем до последней версии) -->
+  <!-- A-Frame + MindAR -->
   <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
@@ -13,6 +13,7 @@
     html, body {
       height: 100%;
       margin: 0;
+      padding: 0;
       background: transparent;
       font-family: Arial, Helvetica, sans-serif;
       color: #fff;
@@ -33,6 +34,7 @@
       height: 100%;
       object-fit: cover;
       z-index: -1;
+      pointer-events: none;
     }
     #ui {
       position: fixed;
@@ -75,7 +77,6 @@
       font-size: 12px;
       line-height: 1.4;
     }
-    /* Скрываем лишние кнопки A-Frame */
     .a-enter-vr, .a-enter-ar {
       display: none !important;
     }
@@ -96,13 +97,11 @@
            vr-mode-ui="enabled: false"
            loading-screen="enabled: false">
     <a-assets>
-      <!-- Видео-ассет -->
       <video id="videoAsset" src="./BoudoirPhotoBox.mp4" preload="auto" loop playsinline webkit-playsinline muted crossorigin="anonymous"></video>
     </a-assets>
 
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-    <!-- Плоскость привязана к targetIndex:0 -->
     <a-entity id="anchor0" mindar-image-target="targetIndex: 0">
       <a-plane id="videoPlane" src="#videoAsset"
                material="shader: flat; transparent: true; opacity: 0; side: double"
@@ -124,7 +123,6 @@
   const videoAsset = document.getElementById('videoAsset');
   const plane = document.getElementById('videoPlane');
 
-  // Проверки файлов
   async function fileExists(url){
     try{
       const r = await fetch(url, { method: 'HEAD' });
@@ -142,7 +140,6 @@
     return t && v;
   }
 
-  // Подгоняем размер плоскости по реальному соотношению видео
   videoAsset.addEventListener('loadedmetadata', () => {
     const w = videoAsset.videoWidth;
     const h = videoAsset.videoHeight;
@@ -155,7 +152,6 @@
     } else dbg('video metadata отсутствуют');
   });
 
-  // Fade helper
   function fadeTo(op, duration=400){
     const start = parseFloat(plane.getAttribute('material').opacity || 0);
     const steps = Math.max(8, Math.round(duration / 40));
@@ -169,7 +165,6 @@
     }, 40);
   }
 
-  // Основная функция старта MindAR
   async function startAR(){
     startBtn.disabled = true;
     status('Проверка файлов...');
@@ -189,7 +184,7 @@
       status('AR запущен — камера активна');
       dbg('system.start() выполнен');
 
-      // Проверка видеопотока
+      // Проверка и настройка видеопотока
       const video = document.querySelector('video:not(#videoAsset)');
       if(video && video.srcObject){
         video.id = 'mindar-video';
@@ -199,12 +194,31 @@
         video.style.height = '100%';
         video.style.objectFit = 'cover';
         video.style.zIndex = '-1';
-        dbg('Видеопоток камеры активен и настроен');
+        video.style.pointerEvents = 'none';
+        dbg(`Видеопоток камеры активен. Размер: ${video.videoWidth}x${video.videoHeight}`);
       } else {
         dbg('Ошибка: видеопоток камеры не обнаружен');
+        // Попытка принудительного создания видеоэлемента
+        const fallbackVideo = document.createElement('video');
+        fallbackVideo.id = 'mindar-video';
+        fallbackVideo.playsInline = true;
+        fallbackVideo.style.position = 'fixed';
+        fallbackVideo.style.inset = '0';
+        fallbackVideo.style.width = '100%';
+        fallbackVideo.style.height = '100%';
+        fallbackVideo.style.objectFit = 'cover';
+        fallbackVideo.style.zIndex = '-1';
+        document.body.appendChild(fallbackVideo);
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+          fallbackVideo.srcObject = stream;
+          fallbackVideo.play();
+          dbg('Принудительно создан видеопоток камеры');
+        } catch(e) {
+          dbg('Ошибка при создании видеопотока: ' + e);
+        }
       }
 
-      // Слушаем события
       sceneEl.addEventListener('arReady', () => dbg('arReady'));
       sceneEl.addEventListener('targetFound', (ev) => {
         dbg('targetFound');
@@ -220,7 +234,6 @@
         fadeTo(0, 200);
       });
 
-      // Обработка ошибок
       window.addEventListener('error', (e) => dbg('window.error: '+ e.message));
       window.addEventListener('unhandledrejection', (e) => dbg('unhandledrejection: '+ (e.reason?.message || e.reason)));
 
@@ -242,7 +255,6 @@
     }catch(e){ dbg('Не удалось включить звук: '+ e); }
   });
 
-  // Подсказка
   dbg('Готово: нажмите Start AR. Убедитесь, что targets.mind и BoudoirPhotoBox.mp4 лежат рядом с index.html и что сайт работает по HTTPS.');
 </script>
 </body>
